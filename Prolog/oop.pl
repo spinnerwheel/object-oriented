@@ -5,6 +5,7 @@
 clear :-
     retractall(class(_,_,_,_)),
     retractall(talk(_)),
+    retractall(to_string(_,_)),
     retractall(instance(_,_,_)).
 
 % is_form/1 is_form(Form).
@@ -19,6 +20,12 @@ is_field(field(FieldName, Value, Type)) :-
     is_of_type(Type, Value).
 is_field(field(FieldName, _)) :-
     atom(FieldName).
+
+% normalize/2 normalize_field(Field, NormalizedField).
+% True if NormalizedField is the representation of Field like
+% field(Name, Value, Type).
+normalize_field(field(Name, Value), field(Name, Value, nonvar)) :- !.
+normalize_field(Field, Field).
 
 % is_method/1 is_method(method(MethodName, Args, Form)).
 is_method(method(MethodName, Args, Form)) :-
@@ -40,9 +47,10 @@ valid_parents([Parent | Rest]) :-
 
 % valid_parts/3 valid_parts(Parts, Fields, Methods).
 valid_parts([], [], []).
-valid_parts([Part | Rest], [Part | Fields], Methods) :-
+valid_parts([Part | Rest], [Field | Fields], Methods) :-
     is_field(Part),
     !,
+    normalize_field(Part, Field),
     valid_parts(Rest, Fields, Methods).
 valid_parts([Part | Rest], Fields, [Part | Methods]) :-
     is_method(Part),
@@ -73,39 +81,31 @@ is_instance(Instance, Class) :-
     Instance = instance(_, Class, _).
 
 % inst/2 inst(InstanceName, Instance).
-% InstanceName is a symbol
-% Instance is a term representing an instance
+% True if Instance is a instance named InstanceName and Instance is a predicate
+% in the database.
 inst(InstanceName, Instance) :-
     Instance = instance(InstanceName, _, _),
     call(Instance).
 
-% update_fields/3
+% update_fields/3 update_fields(Fields, NewValues, UpdatedFields).
+% True if UpdatedFields is Fields updated with the NewValues
+% TODO rearrange the first four predicates (F, !, ...)
 update_fields([], _, []).
-update_fields([F | Rest], NewValues, [U | Updated]) :-
-    member(V, NewValues),
-    F =.. [field, Name, _],
-    V =.. [=, Name, NewValue],
-    !,
-    U = field(Name, NewValue),
-    update_fields(Rest, NewValues, Updated).
 update_fields([F | Rest], NewValues, [U | Updated]) :-
     member(V, NewValues),
     F =.. [field, Name, _, Type],
     V =.. [=, Name, NewValue],
-    is_of_type(Type, NewValue),
     !,
     U = field(Name, NewValue, Type),
+    is_field(U),
     update_fields(Rest, NewValues, Updated).
 update_fields([F | Rest], NewValues, [F | Updated]) :-
     update_fields(Rest, NewValues, Updated).
 
 % field/3 field(InstanceName, Field, Value).
+% True if Value is the values of Field in the instance named InstanceName.
 field(InstanceName, Field, Value) :-
-    atom(InstanceName),
-    instance(InstanceName, _, Fields),
-    first_member(field(Field, Value), Fields).
-field(InstanceName, Field, Value) :-
-    atom(InstanceName),
+    % atom(InstanceName),
     instance(InstanceName, _, Fields),
     first_member(field(Field, Value, _), Fields).
 
@@ -154,16 +154,18 @@ rewrite_method(Instance, Predicate, PredicateWithoutThis) :-
     rewrite_predicate(Instance, [Predicate], [PredicateWithoutThis]).
 %% NOTE rewritable -- end
 
-% declares_methods/2
-declares_methods([], _).
-declares_methods([M | Rest], ClassName) :-
+% declares_methods/3
+% True if MethodsNames are the names of Methods and ClassName is the class
+% associated with Methods.
+declares_methods([], _, []).
+declares_methods([M | Rest], ClassName, [Term | MethodsNames]) :-
     M =.. [_, MName, MArgs, MBody],
     Term =.. [MName, Instance | MArgs],
     rewrite_method(Instance, MBody, RewritedMBody),
     assertz((Term :-
                  is_instance(Instance, ClassName),
                  RewritedMBody)),
-    declares_methods(Rest, ClassName).
+    declares_methods(Rest, ClassName, MethodsNames).
 
 % def_class/2 def_class(ClassName, Parents).
 def_class(ClassName, Parents) :-
@@ -182,8 +184,8 @@ def_class(ClassName, Parents, Parts) :-
     valid_parts(Parts, Fields, Methods),
     % FIXME ereditarietà
     % FIXME metodi
-    declares_methods(Methods, ClassName),
-    assertz(class(ClassName, Parents, Fields, Methods)).
+    declares_methods(Methods, ClassName, MethodsNames),
+    assertz(class(ClassName, Parents, Fields, MethodsNames)).
 
 % make/2 make(Instance, ClassName).
 %
