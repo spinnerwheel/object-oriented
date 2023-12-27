@@ -23,9 +23,8 @@ test :-
         rewrite_method(tommi, Body, RBody)
     ],
     Tests = [
-        clear,
         def_class(person, [],
-                  [field(name, undefined),
+                  [field(name, 1, integer),
                    field(university, undefined),
                    method(talk, [],
                           (write("Hi I'm "),
@@ -41,4 +40,5 @@ test :-
                   ]),
         talk(tommi)
     ],
+    clear,
     test(Tests).
