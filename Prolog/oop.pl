@@ -167,6 +167,42 @@ declares_methods([M | Rest], ClassName, [Term | MethodsNames]) :-
                  RewritedMBody)),
     declares_methods(Rest, ClassName, MethodsNames).
 
+resolve_fields([], Fields, Fields).
+resolve_fields([Field | PrevFields], Fields, InFields) :-
+    arg(1, Field, Name),
+    member(field(Name,_,_), Fields),
+    !,
+    resolve_fields(PrevFields, Fields, InFields).
+resolve_fields([Field | PrevFields], Fields, [Field | InFields]) :-
+    resolve_fields(PrevFields, Fields, InFields).
+
+resolve_methods([], Methods, Methods).
+revolve_methods([Method | PrevMethods], Methods, InMethods) :-
+    Method =.. [method, Name | Args],
+    member(Member, Methods),
+    Member =.. [method, Name | OtherArgs],
+    %% same_length(Args, OtherArgs),
+    length(Args, N),
+    length(OtherArgs, N),
+    !,
+    resolve_methods(PrevMethods, Methods, InMethods).
+revolve_methods([Method | PrevMethods], Methods, [Method | InMethods]) :-
+    resolve_methods(PrevMethods, Methods, InMethods).
+
+resolve_conflicts(PrevFields, PrevMethods,
+                  Fields, Methods,
+                  InFields, InMethods) :-
+    resolve_fields(PrevFields, Fields, InFields),
+    revolve_methods(PrevMethods, Methods, InMethods).
+
+inherit([], Fields, Methods, Fields, Methods).
+inherit([Class | Parents], PrevFields, PrevMethods, InFields, InMethods) :-
+    class(Class, _, Fields, Methods),
+    resolve_conflicts(PrevFields, PrevMethods,
+		      Fields, Methods,
+                      ResultFields, ResultMethods),
+    inherit(Parents, ResultFields, ResultMethods, InFields, InMethods).
+
 % def_class/2 def_class(ClassName, Parents).
 def_class(ClassName, Parents) :-
     def_class(ClassName, Parents, []).
@@ -182,10 +218,11 @@ def_class(ClassName, Parents, Parts) :-
     atom(ClassName),
     valid_parents(Parents),
     valid_parts(Parts, Fields, Methods),
+    inherit(Parents, Fields, Methods, InFields, InMethods),
     % FIXME ereditarietà
     % FIXME metodi
-    declares_methods(Methods, ClassName, MethodsNames),
-    assertz(class(ClassName, Parents, Fields, MethodsNames)).
+    declares_methods(Methods, ClassName, _),
+    assertz(class(ClassName, Parents, InFields, InMethods)).
 
 % make/2 make(Instance, ClassName).
 %
