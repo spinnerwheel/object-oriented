@@ -96,22 +96,33 @@ inst(InstanceName, Instance, Class) :-
 parents(Class, Parents) :-
     current_predicate(class/4),
     class(Class, Parents, _, _).
+
+% anchestor_tree/2 anchestor_tree(Class, Tree).
+% True if Tree is the rappresentation of Class tree.
+anchestor_tree(Class, [Class | ParentsTree]) :-
+    atom(Class),
+    !,
+    parents(Class, Parents),
+    anchestor_tree(Parents, ParentsTree).
+anchestor_tree([], []) :- !.
+anchestor_tree([Class | Rest], [ClassTree | RestTree]) :-
+    anchestor_tree(Class, ClassTree),
+    !,
+    anchestor_tree(Rest, RestTree).
+
+% anchestor_list/2 anchestor_list(Class, Anchestors).
+% True if Anchestors is a list containing all the anchestors of Class.
+anchestors_list(Class, Anchestors) :-
+    anchestors_tree(Class, Tree),
+    flatten(Tree, Anchestors).
+
 % superclass/2 superclass(Class, SuperClass).
 % True if SuperClass is a superclass of Class.
 superclass(Class, Class) :- !.
 superclass(Class, SuperClass) :-
-    class_tree(Class, Tree),
-    flatten(Tree, Flatted),
-    member(SuperClass, Flatted).
+    anchestor_list(Class, Anchestors),
+    member(SuperClass, Anchestors).
 
-class_tree(Class, [Class | ParentsTree]) :-
-    parents(Class, Parents),
-    parents_tree(Parents, ParentsTree).
-parents_tree([], []) :- !.
-parents_tree([Class | Rest], [ClassTree | RestTree]) :-
-    class_tree(Class, ClassTree),
-    !,
-    parents_tree(Rest, RestTree).
 
 % instance_of/2  instance_of(InstanceName, Class).
 % True if InstanceName the name of an instance of Class or his descendants.
@@ -201,12 +212,13 @@ declares_methods([M | Rest], ClassName, [Term | MethodsNames]) :-
                  RewritedMBody)),
     declares_methods(Rest, ClassName, MethodsNames).
 
+% resolve_fields/3 resolve_fields(PrevFields, Fields, InFields).
+% True if PrevFields 
 resolve_fields([], Fields, Fields).
 resolve_fields([Field | PrevFields], Fields, InFields) :-
     arg(1, Field, Name),
     member(field(Name,_,_), Fields),
-    !,
-    resolve_fields(PrevFields, Fields, InFields).
+    !, fail.
 resolve_fields([Field | PrevFields], Fields, [Field | InFields]) :-
     resolve_fields(PrevFields, Fields, InFields).
 
@@ -230,12 +242,15 @@ resolve_conflicts(PrevFields, PrevMethods,
 %% resolve_methods(PrevMethods, Methods, InMethods).
 
 inherit([], Fields, Methods, Fields, Methods).
-inherit([Class | Parents], PrevFields, PrevMethods, InFields, InMethods) :-
+inherit([Class | Parents], InstanceFields, InstanceMethods, InFields, InMethods) :-
     class(Class, _, Fields, Methods),
-    resolve_conflicts(PrevFields, PrevMethods,
+    resolve_conflicts(InstanceFields, InstanceMethods,
 		      Fields, Methods,
                       ResultFields, ResultMethods),
     inherit(Parents, ResultFields, ResultMethods, InFields, InMethods).
+
+inherit_findall(Parents, InstanceFields, InstanceMethods, InFields, InMethods) :-
+    findall(Fields, (class(Class, _, Fields, _), member(Class, Parents)), InFields).
 
 % def_class/2 def_class(ClassName, Parents).
 def_class(ClassName, Parents) :-

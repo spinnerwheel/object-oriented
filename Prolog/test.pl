@@ -18,15 +18,16 @@ test([Test | Rest]) :-
     test(Rest).
 
 test :-
-    Test_class_tree = [
+    Test_parents_tree = [
 	clear,
 	def_class(person, [], []),
 	def_class(record, [], []),
 	def_class(student, [person, record], []),
 	def_class(student_bicocca, [student], []),
-	class_tree(person, [person]),
-	class_tree(record, [record]),
-	class_tree(student, [student, [person], [record]])
+	parents_tree(person, [person]),
+	parents_tree(record, [record]),
+	parents_tree(student, [student, [person], [record]]),
+	parents_tree(student_bicocca, [student_bicocca, [student, [person], [record]]])
     ],
     Test_superclass = [
 	clear,
@@ -80,4 +81,4 @@ test :-
 		  ]),
         make(s1, studenteAge, [age = "22"])
     ],
-    test(Tests).
+    test(Test_parents_tree).
