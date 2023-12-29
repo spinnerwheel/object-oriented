@@ -5,6 +5,7 @@
 clear :-
     retractall(class(_,_,_,_)),
     retractall(talk(_)),
+    retractall(talk(_,_)),
     retractall(to_string(_,_)),
     retractall(instance(_,_,_)).
 
@@ -38,24 +39,24 @@ is_method(method(MethodName, Args, Form)) :-
 is_class(ClassName) :-
     call(class(ClassName, _, _, _)).
 
-% valid_parents/1 valid_parents(Parents).
+% is_parents/1 is_parents(Parents).
 % True is Parents is a list of valid classes.
-valid_parents([]).
-valid_parents([Parent | Rest]) :-
+is_parents([]).
+is_parents([Parent | Rest]) :-
     is_class(Parent),
-    valid_parents(Rest).
+    is_parents(Rest).
 
-% valid_parts/3 valid_parts(Parts, Fields, Methods).
-valid_parts([], [], []).
-valid_parts([Part | Rest], [Field | Fields], Methods) :-
+% is_parts/3 is_parts(Parts, Fields, Methods).
+is_parts([], [], []).
+is_parts([Part | Rest], [Field | Fields], Methods) :-
     is_field(Part),
     !,
     normalize_field(Part, Field),
-    valid_parts(Rest, Fields, Methods).
-valid_parts([Part | Rest], Fields, [Part | Methods]) :-
+    is_parts(Rest, Fields, Methods).
+is_parts([Part | Rest], Fields, [Part | Methods]) :-
     is_method(Part),
     !,
-    valid_parts(Rest, Fields, Methods).
+    is_parts(Rest, Fields, Methods).
 
 % first_member/2 first_member(Element, List).
 % True if Element is an element of List. Returns only the first occourrency.
@@ -84,8 +85,41 @@ is_instance(Instance, Class) :-
 % True if Instance is a instance named InstanceName and Instance is a predicate
 % in the database.
 inst(InstanceName, Instance) :-
-    Instance = instance(InstanceName, _, _),
+    inst(InstanceName, Instance, _).
+inst(InstanceName, Instance, Class) :-
+    Instance = instance(InstanceName, Class, _),
     call(Instance).
+
+
+% parents/2 parents(Class, Parents).
+% True if Parents are the parents of Class.
+parents(Class, Parents) :-
+    current_predicate(class/4),
+    class(Class, Parents, _, _).
+% superclass/2 superclass(Class, SuperClass).
+% True if SuperClass is a superclass of Class.
+superclass(Class, Class) :- !.
+superclass(Class, SuperClass) :-
+    class_tree(Class, Tree),
+    flatten(Tree, Flatted),
+    member(SuperClass, Flatted).
+
+class_tree(Class, [Class | ParentsTree]) :-
+    parents(Class, Parents),
+    parents_tree(Parents, ParentsTree).
+parents_tree([], []) :- !.
+parents_tree([Class | Rest], [ClassTree | RestTree]) :-
+    class_tree(Class, ClassTree),
+    !,
+    parents_tree(Rest, RestTree).
+
+% instance_of/2  instance_of(InstanceName, Class).
+% True if InstanceName the name of an instance of Class or his descendants.
+instance_of(InstanceName, SuperClass) :-
+    atom(InstanceName),
+    is_class(SuperClass),
+    inst(InstanceName, _, Class),
+    superclass(Class, SuperClass).
 
 % update_fields/3 update_fields(Fields, NewValues, UpdatedFields).
 % True if UpdatedFields is Fields updated with the NewValues
@@ -162,8 +196,8 @@ declares_methods([M | Rest], ClassName, [Term | MethodsNames]) :-
     M =.. [_, MName, MArgs, MBody],
     Term =.. [MName, Instance | MArgs],
     rewrite_method(Instance, MBody, RewritedMBody),
-    assertz((Term :-
-                 is_instance(Instance, ClassName),
+    asserta((Term :-
+                 instance_of(Instance, ClassName),
                  RewritedMBody)),
     declares_methods(Rest, ClassName, MethodsNames).
 
@@ -192,8 +226,8 @@ revolve_methods([Method | PrevMethods], Methods, [Method | InMethods]) :-
 resolve_conflicts(PrevFields, PrevMethods,
                   Fields, Methods,
                   InFields, InMethods) :-
-    resolve_fields(PrevFields, Fields, InFields),
-    revolve_methods(PrevMethods, Methods, InMethods).
+    resolve_fields(PrevFields, Fields, InFields).
+%% resolve_methods(PrevMethods, Methods, InMethods).
 
 inherit([], Fields, Methods, Fields, Methods).
 inherit([Class | Parents], PrevFields, PrevMethods, InFields, InMethods) :-
@@ -212,12 +246,13 @@ def_class(ClassName, Parents) :-
 % TODO: this notation in methods
 def_class(ClassName, _, _) :-
     atom(ClassName),
+    current_predicate(class/4),
     class(ClassName, _, _, _),
     !, fail.
 def_class(ClassName, Parents, Parts) :-
     atom(ClassName),
-    valid_parents(Parents),
-    valid_parts(Parts, Fields, Methods),
+    is_parents(Parents),
+    is_parts(Parts, Fields, Methods),
     inherit(Parents, Fields, Methods, InFields, InMethods),
     % FIXME ereditarietà
     % FIXME metodi
