@@ -79,7 +79,7 @@
 
 
 ;;;; is-class !
-;;; ritorna T se class-name � il nome di una classe
+;;; ritorna T se class-name ï¿½ il nome di una classe
 (defun is-class (class-name) 
   (if (get-class-spec class-name) T (error "Class-name not found!")))
 
@@ -99,25 +99,25 @@
 ;;;; get-data: !
 (defun get-data (instance slot-name) 
   (cond 
-   ;; Caso base 
-   ((null instance) nil)
-   ;; Se è un atom 
-   ((atom (car instance)) (get-data (caddr instance) slot-name))
-   ;; Se è un metodo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD")) 
-         (listp (cdar instance)) 
-         (member '=> (cdar instance))) 
-    (caddar instance))
-   ;; Se è un attributo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD"))) 
-    ;; Se è nil ma esistente 
-    (if (null (cdar instance)) "undefined" (cdar instance))) 
-   ;; Altrimenti 
-   (T (get-data (cdr instance) slot-name))))
+    ;; Caso base 
+    ((null instance) nil)
+    ;; Se Ã¨ un atom 
+    ((atom (car instance)) (get-data (caddr instance) slot-name))
+    ;; Se Ã¨ un metodo 
+    ((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                 (intern (symbol-name slot-name) "KEYWORD")) 
+          (listp (cdar instance)) 
+          (member '=> (cdar instance))) 
+     (caddar instance))
+    ;; Se Ã¨ un attributo 
+    ((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                 (intern (symbol-name slot-name) "KEYWORD"))) 
+     ;; Se Ã¨ nil ma esistente 
+     (if (null (cdar instance)) "undefined" (cdar instance))) 
+    ;; Altrimenti 
+    (T (get-data (cdr instance) slot-name))))
 
 
 ;;;; get-parents
@@ -154,9 +154,9 @@
 
 
 ;;; get-class-data: estrae il valore dello slot-name specificato dalla !
-;;; classe desiderata. Se slot-name non è presente nella classe,
+;;; classe desiderata. Se slot-name non Ã¨ presente nella classe,
 ;;; viene cercato nei parents della classe.
-;;; Se non è presente lo slot-name nella classe o nei parents, la
+;;; Se non Ã¨ presente lo slot-name nella classe o nei parents, la
 ;;; funzione segnala un errore.
 (defun get-class-data (class slot-name) 
   (cond ((get-data (get-class-spec class) slot-name)) 
@@ -169,7 +169,7 @@
 
 ;;; get-parent-slot: restituisce il valore del primo slot-name presente !
 ;;; nelle classi parents passate come lista. In pratica se uno slot-name
-;;; non è presente in uno dei parents, va a cercarlo ed eventualmente
+;;; non Ã¨ presente in uno dei parents, va a cercarlo ed eventualmente
 ;;; ereditarlo dalla prossima classe della lista parents.
 (defun get-parent-slot (parents slot-name) 
   (cond ((null parents) nil) 
@@ -184,7 +184,7 @@
   (cond ((and (equal (car value) 'OOLINST) 
               (equal class-name 'T)) T) 
         ((equal (cadr value) class-name) T) 
-        ;; Ereditarietà 
+        ;; EreditarietÃ  
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
 
 ;;; end of file -- ool.lisp
