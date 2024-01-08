@@ -24,7 +24,7 @@
          (error (format nil "Error: Class-name or Parents invalid."))))
   (add-class-spec class-name 
 		  (append (list class-name) 
-			  (append (list parents) (list (slot-structure part))))) 
+			  (append (list parents) (list (slot-structure (redefine-struc (first part)))))))
   class-name)
 
 
@@ -38,16 +38,39 @@
   (cond ((null method) NIL) 
         (T (cons (car method) (get-method-names (cddr method))))))
 
+
+(defun redefine-struc (parts)
+ (apply #'append (rest parts)))
+"""
 ;;;; slot-structer: !
 (defun slot-structure (slots) 
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method slots))) 
          (cons (cons (car slots) 
                      (list  '=> (process-method (car slots) (car (cdr slots))))) 
-               (slot-structure (cdr (cdr slots))))) 
-        ((cons (cons  (car slots) (car (cdr slots))) 
+               (slot-structure (cdr (cdr slots)))))
+	((= (list-length slots) 2) ((append slots "T")
+				    (cons (cons  (car slots) (car (cdr slots))) 
+               (slot-structure (cdr (cdr slots))))))
+        (T (cons (cons  (car slots) (car (cdr slots)) (car (car (cdr slots)))) 
                (slot-structure (cdr (cdr slots)))))))
+"""
+"""(defun slot-structer (slot)
+  (cond ((= (list-length slots) 0) nil)
+	(eq (first slot) field)
+	(list (rest slot))
+	)) """
 
+(defun slot-structure (slots) 
+    (cond ((= (list-length slots) 0) nil) 
+        ((member (car slots) (get-method-names (check-method slots))) 
+         (cons (cons (car slots) 
+                (list  '=> (process-method (car slots) (car (cdr slots))))) 
+               (slot-structure (cdr (cdr slots))))) 
+        ((cons (cons (first slots) (cons (second slots) (third slots))) 
+               (slot-structure (cdr (cdr (cdr slots))))))))
+
+    
 
 ;;;; process-method: !
 ;;; genera il codice necessaria per creare un metodo.
@@ -79,7 +102,7 @@
 
 
 ;;;; is-class !
-;;; ritorna T se class-name ÔøΩ il nome di una classe
+;;; ritorna T se class-name Ë il nome di una classe
 (defun is-class (class-name) 
   (if (get-class-spec class-name) T (error "Class-name not found!")))
 
@@ -99,25 +122,25 @@
 ;;;; get-data: !
 (defun get-data (instance slot-name) 
   (cond 
-   ;; Caso base 
-   ((null instance) nil)
-   ;; Se √® un atom 
-   ((atom (car instance)) (get-data (caddr instance) slot-name))
-   ;; Se √® un metodo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD")) 
-         (listp (cdar instance)) 
-         (member '=> (cdar instance))) 
-    (caddar instance))
-   ;; Se √® un attributo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD"))) 
-    ;; Se √® nil ma esistente 
-    (if (null (cdar instance)) "undefined" (cdar instance))) 
-   ;; Altrimenti 
-   (T (get-data (cdr instance) slot-name))))
+    ;; Caso base 
+    ((null instance) nil)
+    ;; Se √® un atom 
+    ((atom (car instance)) (get-data (caddr instance) slot-name))
+    ;; Se √® un metodo 
+    ((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                 (intern (symbol-name slot-name) "KEYWORD")) 
+          (listp (cdar instance)) 
+          (member '=> (cdar instance))) 
+     (caddar instance))
+    ;; Se √® un attributo 
+    ((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                 (intern (symbol-name slot-name) "KEYWORD"))) 
+     ;; Se √® nil ma esistente 
+     (if (null (cdar instance)) "undefined" (cdar instance))) 
+    ;; Altrimenti 
+    (T (get-data (cdr instance) slot-name))))
 
 
 ;;;; get-parents
@@ -179,12 +202,45 @@
 
 
 ;;; is-instance: !
-;;; ritorna T se viene passato coem oggetto l'istanza di una classe
+;;; ritorna T se viene passato come oggetto l'istanza di una classe
 (defun is-instance (value &optional (class-name T)) 
   (cond ((and (equal (car value) 'OOLINST) 
               (equal class-name 'T)) T) 
         ((equal (cadr value) class-name) T) 
-        ;; Ereditariet√† 
+        ;; Ereditariet‡
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
+
+
+;;; <<: estrae il valore di un campo da una classe.
+;;; Se slot-name non Ë presente nella classe dell'istanza
+;;; viene segnalato un errore.
+(defun << (instance slot-name) 
+    ;; Se l'instanza non ha lo slotname, vedi la sua classe 
+        (cond ((get-data instance slot-name)) 
+            ;; Se la classe non ha lo slotname cerca nei padri 
+            ((get-data (get-class-spec (cadr instance)) slot-name))
+            ((get-parent-slot (get-parents (cadr instance)) slot-name))
+            ((error 
+                (format nil 
+			"Error: no method or slot named ~a found." slot-name)))))
+
+
+;;; <<*: estrae il valore da una classe percorrendo una catena di attributi.
+;;; Il risultato Ë il valore associato all'ultimo elemento di slot-name
+;;; nell'ultima istanza.
+;;; Se uno degli elementi di slot-name non esiste nella classe
+;;; dell'istanza, viene segnalato un errore.
+(defun <<* (instance &rest slot-name)
+  (cond 
+    ((null (is-instance (<< instance (if (listp (car slot-name)) 
+					 (caar slot-name) (car slot-name))))) 
+     (error "Errore <<* non Ë un'istanza"))
+    ((eq (length slot-name) 1) 
+     (<< instance (if (listp (car slot-name)) 
+                      (caar slot-name) (car slot-name))))
+    (T (<<* (<< instance (if (listp (car slot-name)) 
+                             (caar slot-name) (car slot-name))) 
+            (cdr slot-name)))))
+
 
 ;;; end of file -- ool.lisp
