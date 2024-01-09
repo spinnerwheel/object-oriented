@@ -1,6 +1,14 @@
 ;;;; -*- Mode: Lisp -*-
 
+"""
 
+TO-DO
+
+- controllo parent esistente
+- controllo type
+- metodi
+ 
+"""
 
 ;;;; classes-specs !
 (defparameter *classes-specs* (make-hash-table))
@@ -16,7 +24,7 @@
 
 ;;;; def-class !
 ;;; definisce una classe come variabile globale
-(defun def-class (class-name parents &rest part) 
+(defun def-class (class-name parents &rest part)
   (cond ((or (not (atom class-name)) 
              (equal class-name '()) 
              (null class-name) 
@@ -39,8 +47,42 @@
         (T (cons (car method) (get-method-names (cddr method))))))
 
 
+(defun stampa-oggetto (oggetto)
+  (print oggetto))
+
 (defun redefine-struc (parts)
- (apply #'append (rest parts)))
+ ; (stampa-oggetto parts)
+  
+  (apply #'append  (check-ty parts)))
+
+
+(defun check-ty (lista)
+  (mapcar (lambda (sottolista)
+            (if (or (null sottolista) (null (cddr sottolista)))
+                (append sottolista (list T))
+                sottolista))
+          (cdr lista)))
+
+(defun check-third-element (list)
+  (mapcar (lambda (sottolista)
+	    (if (not(or (equal '(integer) (cddr sottolista))
+			(equal '(T) (cddr sottolista))
+			;funziona solo su classi esistenti, T non passa
+			( ;modificare con un if
+			 (cond (not (equal '(T) (cddr sottolista)))(is-class (cddr sottolista)))
+			 
+				  )))
+		(error "Il terzo elemento non è un tipo base di Lisp")
+		sottolista))
+	   list))
+
+
+(defun check-third-element-alternative (list)
+  (cond ((null list) nil)
+        ((null (cddr list)) nil)
+        ((member (type-of (caddr list)) '(integer float character string symbol)) t)
+        (t (error "Il terzo elemento non è un tipo base di Lisp"))))
+
 """
 ;;;; slot-structer: !
 (defun slot-structure (slots) 
@@ -67,7 +109,7 @@
          (cons (cons (car slots) 
                 (list  '=> (process-method (car slots) (car (cdr slots))))) 
                (slot-structure (cdr (cdr slots))))) 
-        ((cons (cons (first slots) (cons (second slots) (third slots))) 
+        ( (cons  (cons (first slots) (cons (second slots) (third slots))) 
                (slot-structure (cdr (cdr (cdr slots))))))))
 
     
@@ -118,30 +160,39 @@
           (format nil 
                   "Error: no method or slot named ~a found." slot-name)))))
 
+;; se è un atomo
+"""((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) ""KEYWORD"") 
+                 (intern (symbol-name slot-name) ""KEYWORD"")) 
+          (listp (cdar instance)) 
+          (member '=> (cdar instance)))
+     (caddar instance))"""
 
 ;;;; get-data: !
-(defun get-data (instance slot-name) 
+(defun get-data (instance slot-name)
   (cond 
-   ;; Caso base 
-   ((null instance) nil)
-   ;; Se è un atom 
-   ((atom (car instance)) (get-data (caddr instance) slot-name))
-   ;; Se è un metodo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD")) 
-         (listp (cdar instance)) 
-         (member '=> (cdar instance))) 
-    (caddar instance))
-   ;; Se è un attributo 
-   ((and (symbolp (caar instance)) 
-         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                (intern (symbol-name slot-name) "KEYWORD"))) 
-    ;; Se è nil ma esistente 
-    (if (null (cdar instance)) "undefined" (cdar instance))) 
-   ;; Altrimenti 
-   (T (get-data (cdr instance) slot-name))))
+    ;; Caso base 
+    ((null instance) nil)
+    ;; Se è un atom 
+    ((atom (car instance)) (get-data (caddr instance) slot-name))
+    ;; Se è un metodo 
+    
+    ;; Se è un attributo 
+    ((and (symbolp (caar instance)) 
+          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                 (intern (symbol-name slot-name) "KEYWORD"))) 
+     ;; Se è nil ma esistente 
+     (if (null (cdar instance)) "undefined" (second (car instance)))) 
+    ;; Altrimenti 
+    (T (get-data (cdr instance) slot-name))))
 
+(defun trasforma-sottoliste-in-atomi (lista)
+  (mapcar (lambda (sublista)
+            (mapcar #'atom sublista))
+          lista))
+
+(defun trasforma-in-atomi (lista)
+  (mapcar #'atom lista))
 
 ;;;; get-parents
 (defun get-parents (class) 
