@@ -1,6 +1,20 @@
 %% -*- Mode: Prolog -*-
 
-:- [oop].
+:- ["rewrite-oop"].
+
+% clear/0
+% True if clears the environment
+clear :-
+    clear_methods(_),
+    retractall(class(_,_,_,_)),
+    retractall(instance(_,_,_)).
+clear_methods(BagOf) :-
+    current_predicate(class/4),
+    findall(Name, (class(_,_,_, Methods),
+		member(Method, Methods),
+		Method = method(Name, Args, _),
+		Term =.. [Name, _ | Args],
+		retractall(Term)), BagOf).
 
 % run/1 run(Test).
 % Run Test and print the result on the stdout.
@@ -18,37 +32,35 @@ test([Test | Rest]) :-
     test(Rest).
 
 test :-
-    Test_parents_tree = [
+    Tests = [
 	clear,
-	def_class(person, [], []),
-	def_class(record, [], []),
-	def_class(student, [person, record], []),
-	def_class(student_bicocca, [student], []),
-	parents_tree(person, [person]),
-	parents_tree(record, [record]),
-	parents_tree(student, [student, [person], [record]]),
-	parents_tree(student_bicocca, [student_bicocca, [student, [person], [record]]])
-    ],
-    Test_superclass = [
-	clear,
+	% test superclass/is_instance
 	def_class(person, [], []),
 	def_class(record, [], []),
 	def_class(student, [person, record], []),
 	def_class(student_bicocca, [student], []),
 	make(s1, student_bicocca),
-	instance_of(s1, student),
-	instance_of(s1, person),
-	instance_of(s1, record),
+	is_instance(s1, student),
+	is_instance(s1, person),
+	is_instance(s1, record),
 	not(superclass(person, student)),
 	not(superclass(student, student_bicocca)),
 	superclass(student_bicocca, student),
 	superclass(student_bicocca, person),
-	superclass(student_bicocca, record)
-    ],
-    Tests = [
+	superclass(student_bicocca, record),
+	% test fieldx
+	clear,
+	def_class(l1, [], [field(name, "l1")]),
+	make(instance_l1, l1),
+	def_class(l2, [], [field(name, "l2"),
+			    field(l1, instance_l1, l1)]),
+	make(instance_l2, l2),
+	fieldx(instance_l2, [l1, name], "l1"),
+	not(fieldx(instance_l2, [], _)),
+	% test def_class
 	clear,
         def_class(person, [],
-                  [field(name, "Tommi", string),
+                  [field(name, "jon snow", string),
                    field(age, 0, integer),
                    method(talk, [Text],
                           (write("Hi I'm "),
@@ -57,28 +69,51 @@ test :-
 			   write("I have "),
                            field(this, age, Age),
                            writeln(Age),
-                            write("I also want to say "),
-                            writeln(Text)))]),
-	make(tommi, person, [name = "Tommi", age = 22]),
-	field(tommi, name, "Tommi"),
-        not(def_class(classe, [notValidClass])),
-	def_class(student, [person],
+                           write("I also want to say "),
+                           writeln(Text)))]),
+	def_class(object, [],
+		  [field(id, "", string),
+		   method(to_string, [],
+			  (field(this, id, Value),
+			   write("Id: "),
+			   writeln(Value)))]),
+	def_class(record, [object],
+		  [field(id, -1, integer)]),
+	def_class(student, [person, record],
 		  [field(university, "", string),
 		   method(talk, [],
 			  (writeln("Hi I'm a student!"))),
-		    method(talk, [_],
-			(writeln("Print this out and we are chill")))
+		   method(talk, [_],
+			  (writeln("Print this out and we are chill")))
 		  ]),
-	talk(tommi, "I am a monkey"),
-	make(frank, student, [name = "Frank", age = 24]),
-	talk(frank),
-        talk(frank, "I'm also a monkey"),
-        %% il parametro age dovrebbe essere sovrascritto
-	def_class(studentAge, [person],
+	def_class(student_reverse, [object, person],
+		  [field(university, "", string),
+		   method(talk, [],
+			  (writeln("Hi I'm a student!"))),
+		   method(talk, [_],
+			  (writeln("Print this out and we are chill")))
+		  ]),
+	% test override metodi e campi
+	def_class(studentAge, [student],
 		  [field(age, "0", string),
 		   method(talk, [],
-			  (writeln("Hi I'm a student!")))
+			  (writeln("Hi I'm a studentAge!")))
 		  ]),
-        make(s1, studenteAge, [age = "22"])
+	% make tests
+	make(p1, person, [name = "p1", age = 22]),
+	not(make(p1, student, [])),
+	make(frank, student, [name = "Frank", age = 24, id = 24, university = "Bocconi"]),
+	make(s1, studentAge, [age = "22", id = -10000]),
+	not(make(s2, studentAge, [age = 10])),
+	make(sr1, student_reverse, [id = "100"]),
+	make(st1, student, [id = 2]),
+	field(p1, name, "p1"),
+	talk(p1, "I am a monkey"),
+	talk(frank),
+        talk(frank, "I'm also a monkey"),
+	talk(s1),
+	not(to_string(p1)),
+	to_string(frank),
+	to_string(s1)
     ],
-    test(Test_parents_tree).
+    test(Tests).

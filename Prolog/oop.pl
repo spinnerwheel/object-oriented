@@ -1,302 +1,318 @@
-%% -*- Mode: Prolog -*-
+% -*- Mode: Prolog -*-
 
-% clear/0
-% True if clears the environment
-clear :-
-    retractall(class(_,_,_,_)),
-    retractall(talk(_)),
-    retractall(talk(_,_)),
-    retractall(to_string(_,_)),
-    retractall(instance(_,_,_)).
+:- dynamic instance/3.
+:- dynamic class/4.
 
-% is_form/1 is_form(Form).
-% True if Form is a valid procedure
-is_form(Form) :-
-    functor(Form, Functor, Arity),
-    current_predicate(Functor/Arity).
+% is_type/2
+is_type(undefined, _Value) :- !.
+is_type(Type, Value) :-
+    is_of_type(Type, Value), !.
+is_type(Type, Value) :-
+    is_class(Type),
+    is_instance(Value, Type).
 
 % is_field/1 is_field(field(FieldName, Value, Type)).
+% True if FieldName is an atom;
+% Value is nonvar and of type Type.
 is_field(field(FieldName, Value, Type)) :-
     atom(FieldName),
-    is_of_type(Type, Value).
-is_field(field(FieldName, _)) :-
-    atom(FieldName).
+    nonvar(Value),
+    is_type(Type, Value).
 
-% normalize/2 normalize_field(Field, NormalizedField).
-% True if NormalizedField is the representation of Field like
+% is_field/2 is_field(Field, NormalizedField).
+% True if NormalizedField is the standard representation of Field:
 % field(Name, Value, Type).
-normalize_field(field(Name, Value), field(Name, Value, nonvar)) :- !.
-normalize_field(Field, Field).
+is_field(field(Name, Value), NormalizedField) :-
+    !,
+    NormalizedField = field(Name, Value, undefined),
+    is_field(NormalizedField).
+is_field(Field, Field) :-
+    is_field(Field).
 
-% is_method/1 is_method(method(MethodName, Args, Form)).
-is_method(method(MethodName, Args, Form)) :-
-    atom(MethodName),
-    is_list(Args),
+% is_conjunction/1 is_conjunction(Term).
+% True if Term is a conjunction.
+is_conjunction(Term) :-
+    functor(Term, ',', 2).
+is_conjunction(Term, Element, Rest) :-
+    Term =.. [',', Element, Rest].
+% is_form/1 is_form(Form).
+% True if Form is any conjunction of Prolog predicates.
+is_form(Form) :-
+    is_conjunction(Form),
+    !.
+is_form(Form) :-
+    callable(Form).
+% is_method/1 is_method(Method).
+% True if Method is a compound like:
+% method(Name, Arglist, Form);
+% Name is an atom, Arglist is a list of parameters and Form is a form.
+is_method(method(Name, ArgList, Form)) :-
+    atom(Name),
+    is_list(ArgList),
     is_form(Form).
 
-% is_class/1 is_class(Class).
-% True if Class is a class.
+% is_class/1 is_class(ClassName).
+% True if ClassName is an atom and is the name of a class.
 is_class(ClassName) :-
-    call(class(ClassName, _, _, _)).
+    atom(ClassName),
+    class(ClassName, _, _, _).
 
 % is_parents/1 is_parents(Parents).
-% True is Parents is a list of valid classes.
+% True if Parents are list of classes.
 is_parents([]).
-is_parents([Parent | Rest]) :-
-    is_class(Parent),
+is_parents([Class | Rest]) :-
+    is_class(Class),
     is_parents(Rest).
 
 % is_parts/3 is_parts(Parts, Fields, Methods).
+% True if Fields and Methods are extracted from Parts.
 is_parts([], [], []).
 is_parts([Part | Rest], [Field | Fields], Methods) :-
-    is_field(Part),
+    is_field(Part, Field),
     !,
-    normalize_field(Part, Field),
     is_parts(Rest, Fields, Methods).
 is_parts([Part | Rest], Fields, [Part | Methods]) :-
     is_method(Part),
-    !,
     is_parts(Rest, Fields, Methods).
 
-% first_member/2 first_member(Element, List).
-% True if Element is an element of List. Returns only the first occourrency.
-first_member(Element, [Other | Rest]) :-
-    Element \= Other,
-    !,
-    first_member(Element, Rest).
-first_member(Element, [Element | _]).
-
 % is_instance/1 is_instance(Instance).
-% True if Instance is a instance of a class
-is_instance(Instance) :-
-    is_instance(Instance, _).
-% is_instance/2 is_instance(Instance, Class).
-% True if Instance is a instance of Class where Class is a symbol
-is_instance(InstanceName, Class) :-
+% True if Instance is an instance.
+is_instance(InstanceName) :-
+    inst(InstanceName, _).
+
+% is_instance/2 is_instance(Instance, ClassName).
+% True if Instance is an instance of ClassName as superclass.
+is_instance(InstanceName, ClassName) :-
     atom(InstanceName),
-    !,
-    instance(InstanceName, Class, _).
-is_instance(Instance, Class) :-
-    compound(Instance),
-    !,
-    Instance = instance(_, Class, _).
+    instance(InstanceName, ClassName, _),
+    !.
+is_instance(InstanceName, SuperClass) :-
+    atom(InstanceName),
+    instance(InstanceName, ClassName, _),
+    superclass(ClassName, SuperClass).
+is_instance(instance(Name, ClassName, Fields), ClassName) :-
+    atom(Name),
+    is_class(ClassName),
+    is_list(Fields).
 
 % inst/2 inst(InstanceName, Instance).
-% True if Instance is a instance named InstanceName and Instance is a predicate
-% in the database.
+% True if Instance is the instance of name InstanceName
+% and Instance exist in the knowledge base.
 inst(InstanceName, Instance) :-
-    inst(InstanceName, Instance, _).
-inst(InstanceName, Instance, Class) :-
-    Instance = instance(InstanceName, Class, _),
-    call(Instance).
+    atom(InstanceName),
+    instance(InstanceName, Class, Fields),
+    Instance = instance(InstanceName, Class, Fields).
 
+% member_fields/2 member_fields(Field, List).
+% True if in List there is a field with the same name as Field.
+member_fields(Name, List) :-
+    atom(Name), !,
+    member_fields(field(Name, _, _), List).
+member_fields(Field, List) :-
+    Field = field(Name, _, _),
+    memberchk(field(Name, _, _), List).
+
+% append_if_not_member/3 append_if_not_member(List1, List2, Result).
+% True if Result is List1 appended to List2 
+% without the elements of List1 that are
+% member_fields in List2
+append_if_not_member([], List, List) :- !.
+append_if_not_member(List, [], List) :- !.
+append_if_not_member([Element | Rest], List, Result) :-
+    member_fields(Element, List),
+    !,
+    append_if_not_member(Rest, List, Result).
+append_if_not_member([Element | Rest], List, [Element | Result]) :-
+    append_if_not_member(Rest, List, Result).
+
+% field/3 field(Instance, FieldName, Field).
+% True if Instance is an instance;
+% FieldName is an atom;
+% Field is the field of name FieldName of Instance.
+field(Instance, FieldName, Value) :-
+    fields(Instance, Fields),
+    member(field(FieldName, Value, _), Fields).
+
+% fieldx/3 fieldx(Instance, Fields, Result).
+% True if Result is the value of the last element of Fields in the last instance.
+% Is the same as:
+% ?- field(I1, s1, V1),
+% |   field(V1, s2, R),
+% |   fieldx(I1, [s1, s2], R).
+fieldx(Instance, [Field], Result) :-
+    !,
+    field(Instance, Field, Result).
+fieldx(Instance, [Field | Rest], Result) :-
+    field(Instance, Field, Value),
+    fieldx(Value, Rest, Result).
 
 % parents/2 parents(Class, Parents).
 % True if Parents are the parents of Class.
 parents(Class, Parents) :-
-    current_predicate(class/4),
     class(Class, Parents, _, _).
 
-% anchestor_tree/2 anchestor_tree(Class, Tree).
-% True if Tree is the rappresentation of Class tree.
-anchestor_tree(Class, [Class | ParentsTree]) :-
-    atom(Class),
-    !,
-    parents(Class, Parents),
-    anchestor_tree(Parents, ParentsTree).
-anchestor_tree([], []) :- !.
-anchestor_tree([Class | Rest], [ClassTree | RestTree]) :-
-    anchestor_tree(Class, ClassTree),
-    !,
-    anchestor_tree(Rest, RestTree).
+% fields/2 fields(Class, Fields).
+% True if Element is a class and Fields are the direct fields of Element;
+% True if Element is an instance Fields are the fields of Instance.
+fields(Class, Fields) :-
+    class(Class, _, Fields, _),
+    !.
+fields(instance(_,_, Fields), Fields) :- !.
+fields(InstanceName, Fields) :-
+    inst(InstanceName, Instance),
+    fields(Instance, Fields).
+% anchestors/2 anchestors(Class, Anchestors).
+% True if Anchestors is the anchestors list of Class.
+anchestors(Class, Anchestors) :-
+    anchestors([Class], [], Anchestors).
 
-% anchestor_list/2 anchestor_list(Class, Anchestors).
-% True if Anchestors is a list containing all the anchestors of Class.
-anchestors_list(Class, Anchestors) :-
-    anchestors_tree(Class, Tree),
-    flatten(Tree, Anchestors).
+% anchestors/3 anchestors(Queue, SoFar, Anchestors).
+% True if Queue is a list of classes and Anchestors is the anchestors list,
+% SoFar is the list of anchestors visited until this point.
+anchestors([], SoFar, SoFar).
+anchestors([Class | Queue], SoFar, Anchestors) :-
+    parents(Class, Parents),
+    subset(Parents, Queue),
+    !,
+    anchestors(Queue, SoFar, Anchestors).
+anchestors([Class | Queue], SoFar, Anchestors) :-
+    parents(Class, Parents),
+    append(Queue, Parents, NewQueue),
+    append(SoFar, Parents, NewSoFar),
+    anchestors(NewQueue, NewSoFar, Anchestors).
+
+% fields_from_anchestors/3 fields_from_anchestors(Anchestors, SoFar, Fields)
+% True if Anchestors is a list of classes,
+% SoFar is the list of visited fields,
+% Fields is the list of fields of Anchestors without duplicates.
+fields_from_anchestors([], Fields, Fields).
+fields_from_anchestors([Anchestor | Rest], SoFar, Result) :-
+    fields(Anchestor, Fields),
+    append_if_not_member(Fields, SoFar, NewSoFar),
+    fields_from_anchestors(Rest, NewSoFar, Result).
+
+% inherited_fields/2
+% True if Fields are the inherited fields of Class.
+% inherited_fields(Class, Fields) :-
+%     anchestors(Class, Anchestors),
+%     fields_from_anchestors(Anchestors, [], Fields).
 
 % superclass/2 superclass(Class, SuperClass).
 % True if SuperClass is a superclass of Class.
-superclass(Class, Class) :- !.
 superclass(Class, SuperClass) :-
-    anchestor_list(Class, Anchestors),
-    member(SuperClass, Anchestors).
-
-
-% instance_of/2  instance_of(InstanceName, Class).
-% True if InstanceName the name of an instance of Class or his descendants.
-instance_of(InstanceName, SuperClass) :-
-    atom(InstanceName),
     is_class(SuperClass),
-    inst(InstanceName, _, Class),
-    superclass(Class, SuperClass).
+    superclass([Class], SuperClass, []).
 
-% update_fields/3 update_fields(Fields, NewValues, UpdatedFields).
-% True if UpdatedFields is Fields updated with the NewValues
-% TODO rearrange the first four predicates (F, !, ...)
-update_fields([], _, []).
-update_fields([F | Rest], NewValues, [U | Updated]) :-
-    member(V, NewValues),
-    F =.. [field, Name, _, Type],
-    V =.. [=, Name, NewValue],
+% superclass/3 superclass(Queue, SuperClass, SoFar).
+superclass([SuperClass | _], SuperClass, _) :- !.
+superclass([Class | Queue], SuperClass, SoFar) :-
+    parents(Class, Parents),
+    subset(Parents, Queue),
     !,
-    U = field(Name, NewValue, Type),
-    is_field(U),
-    update_fields(Rest, NewValues, Updated).
-update_fields([F | Rest], NewValues, [F | Updated]) :-
-    update_fields(Rest, NewValues, Updated).
+    superclass(Queue, SuperClass, SoFar).
+superclass([Class | Queue], SuperClass, SoFar) :-
+    parents(Class, Parents),
+    append(Queue, Parents, NewQueue),
+    append(SoFar, Parents, NewSoFar),
+    superclass(NewQueue, SuperClass, NewSoFar).
 
-% field/3 field(InstanceName, Field, Value).
-% True if Value is the values of Field in the instance named InstanceName.
-field(InstanceName, Field, Value) :-
-    % atom(InstanceName),
-    instance(InstanceName, _, Fields),
-    first_member(field(Field, Value, _), Fields).
-
-% fieldx/3
-fieldx(_, [], []) :- !.
-fieldx(InstanceName, [F | Fields], [Value | Rest]) :-
-    field(InstanceName, F, Value),
-    fieldx(InstanceName, Fields, Rest).
-
-%% NOTE rewritable -- start
-% substitute_this/3
-substitute_this(_, [], []) :- !.
-substitute_this(Instance, [Arg | Args], [Arg | ArgsWithoutThis]) :-
-    var(Arg),
+% rewrite_method/3 rewrite_method(Element, RewritedElement, Instance).
+% Contains the logic to substitute the atom this with Instance.
+rewrite_method(Element, Instance, Instance) :-
+    atom(Element),
+    Element = this, !.
+rewrite_method(Element, Element, _) :-
+    nonvar(Element),
+    Element = [], !.
+rewrite_method(Element, Element, _) :-
+    var(Element), !.
+rewrite_method(Body, RewritedBody, Instance) :-
+    is_conjunction(Body, Element, Rest),
     !,
-    substitute_this(Instance, Args, ArgsWithoutThis).
-substitute_this(Instance, [Arg | Args], [Instance | ArgsWithoutThis]) :-
-    atom(Arg),
-    Arg = this,
+    rewrite_method(Element, RElement, Instance),
+    rewrite_method(Rest, RRest, Instance),
+    is_conjunction(RewritedBody, RElement, RRest).
+rewrite_method([Arg | Rest], [RArg | RRest], Instance) :-
     !,
-    substitute_this(Instance, Args, ArgsWithoutThis).
-substitute_this(Instance, [Arg | Args], [Arg | ArgsWithoutThis]) :-
-    substitute_this(Instance, Args, ArgsWithoutThis).
-
-% rewrite_predicate/3 rewrite_predicate(Instance, Predicates, Result).
-% True if Result is Predicates with this substituted with Instance
-rewrite_predicate(Instance, Predicate, Result) :-
-    Predicate =.. [Functor | Args],
-    substitute_this(Instance, Args, ArgsWithoutThis),
-    Result =.. [Functor | ArgsWithoutThis].
-
-% rewrite_method/3
-rewrite_method(Instance, Body, RewritedBody) :-
-    Body =.. [',', Predicate | Predicates],
+    rewrite_method(Arg, RArg, Instance),
+    rewrite_method(Rest, RRest, Instance).
+rewrite_method(Predicate, RPredicate, Instance) :-
+    compound(Predicate),
+    Predicate =.. [Name | Args],
     !,
-    rewrite_predicate(Instance, Predicate, RewrotedPredicate),
-    rewrite_method(Instance, Predicates, RewrotedPredicates),
-    RewritedBody =.. [',', RewrotedPredicate | RewrotedPredicates].
-rewrite_method(Instance, [Body], [RewritedBody]) :-
-    Body =.. [',', Predicate | Predicates],
-    !,
-    rewrite_predicate(Instance, Predicate, RewrotedPredicate),
-    rewrite_method(Instance, Predicates, RewrotedPredicates),
-    RewritedBody =.. [',', RewrotedPredicate | RewrotedPredicates].
-rewrite_method(Instance, Predicate, PredicateWithoutThis) :-
-    rewrite_predicate(Instance, [Predicate], [PredicateWithoutThis]).
-%% NOTE rewritable -- end
+    rewrite_method(Args, RArgs, Instance),
+    RPredicate =.. [Name | RArgs].
+rewrite_method(Element, Element, _Instance).
 
-% declares_methods/3
-% True if MethodsNames are the names of Methods and ClassName is the class
-% associated with Methods.
-declares_methods([], _, []).
-declares_methods([M | Rest], ClassName, [Term | MethodsNames]) :-
-    M =.. [_, MName, MArgs, MBody],
-    Term =.. [MName, Instance | MArgs],
-    rewrite_method(Instance, MBody, RewritedMBody),
+% declare_methods/2 declare_methods(Methods, ClassName).
+% True if Methods is a list (possibly empty) containing methods
+% that are rewritten to substitute the atom this with Instance
+% and then added to the knowledge base.
+declare_methods([], _).
+declare_methods([Method | Rest], ClassName) :-
+    Method = method(Name, Args, Body),
+    Term =.. [Name, Instance | Args],
+    rewrite_method(Body, RewritedBody, Instance),
     asserta((Term :-
-                 instance_of(Instance, ClassName),
-                 RewritedMBody)),
-    declares_methods(Rest, ClassName, MethodsNames).
+        is_instance(Instance, ClassName),
+        !,
+        RewritedBody)),
+    declare_methods(Rest, ClassName).
 
-% resolve_fields/3 resolve_fields(PrevFields, Fields, InFields).
-% True if PrevFields 
-resolve_fields([], Fields, Fields).
-resolve_fields([Field | PrevFields], Fields, InFields) :-
-    arg(1, Field, Name),
-    member(field(Name,_,_), Fields),
-    !, fail.
-resolve_fields([Field | PrevFields], Fields, [Field | InFields]) :-
-    resolve_fields(PrevFields, Fields, InFields).
-
-resolve_methods([], Methods, Methods).
-revolve_methods([Method | PrevMethods], Methods, InMethods) :-
-    Method =.. [method, Name | Args],
-    member(Member, Methods),
-    Member =.. [method, Name | OtherArgs],
-    %% same_length(Args, OtherArgs),
-    length(Args, N),
-    length(OtherArgs, N),
-    !,
-    resolve_methods(PrevMethods, Methods, InMethods).
-revolve_methods([Method | PrevMethods], Methods, [Method | InMethods]) :-
-    resolve_methods(PrevMethods, Methods, InMethods).
-
-resolve_conflicts(PrevFields, PrevMethods,
-                  Fields, Methods,
-                  InFields, InMethods) :-
-    resolve_fields(PrevFields, Fields, InFields).
-%% resolve_methods(PrevMethods, Methods, InMethods).
-
-inherit([], Fields, Methods, Fields, Methods).
-inherit([Class | Parents], InstanceFields, InstanceMethods, InFields, InMethods) :-
-    class(Class, _, Fields, Methods),
-    resolve_conflicts(InstanceFields, InstanceMethods,
-		      Fields, Methods,
-                      ResultFields, ResultMethods),
-    inherit(Parents, ResultFields, ResultMethods, InFields, InMethods).
-
-inherit_findall(Parents, InstanceFields, InstanceMethods, InFields, InMethods) :-
-    findall(Fields, (class(Class, _, Fields, _), member(Class, Parents)), InFields).
-
-% def_class/2 def_class(ClassName, Parents).
-def_class(ClassName, Parents) :-
-    def_class(ClassName, Parents, []).
-
-% def_class/3 def_class(ClassName, Parents, Parts).
-% TODO: implement assert
-% TODO: this notation in methods
-def_class(ClassName, _, _) :-
-    atom(ClassName),
-    current_predicate(class/4),
-    class(ClassName, _, _, _),
-    !, fail.
-def_class(ClassName, Parents, Parts) :-
-    atom(ClassName),
+% def_class/3 def_class(Name, Parents, Parts).
+% True if Name is not already an atom rapresenting a class,
+% Parents are valid classes,
+% Parts is a list (possibly empty) containing valid fields and methods.
+def_class(Name, Parents, Parts) :-
+    atom(Name),
+    not(is_class(Name)),
     is_parents(Parents),
     is_parts(Parts, Fields, Methods),
-    inherit(Parents, Fields, Methods, InFields, InMethods),
-    % FIXME ereditarietà
-    % FIXME metodi
-    declares_methods(Methods, ClassName, _),
-    assertz(class(ClassName, Parents, InFields, InMethods)).
+    declare_methods(Methods, Name),
+    asserta(class(Name, Parents, Fields, Methods)).
+
+% instantiate_fields/2 instantiate_fields(Class, Fields).
+% True if Fields is a list containing all the fields that
+% an instance of Class should instantiate.
+instantiate_fields(Class, Fields) :-
+    fields(Class, ClassFields),
+    anchestors(Class, Anchestors),
+    fields_from_anchestors(Anchestors, ClassFields, Fields).
+
+% update_fields/3 update_fields(NewFieldsValues, Fields, UpdatedFields).
+% True if UpdatedFields contains Fields with updated NewFieldsValues values.
+% Fails if the values of NewFileldsValues do not match the types of Fields
+% Fails if NewFieldsValues contains a non valid field.
+update_fields([], Fields, Fields).
+update_fields([NewFieldValue | Rest], Fields, UpdatedFields) :-
+    update_field(NewFieldValue, Fields, [], TempFields),
+    update_fields(Rest, TempFields, UpdatedFields).
+update_field(NewFieldValue, [Field | Fields], SoFar, UpdatedFields) :-
+    NewFieldValue =.. ['=', Name, Value],
+    Field = field(Name, _, Type),
+    !,
+    is_type(Type, Value),
+    UpdatedField = field(Name, Value, Type),
+    append(Fields, [UpdatedField | SoFar], UpdatedFields).
+update_field(NewFieldValue, [Field | Fields], SoFar, UpdatedFields) :-
+    update_field(NewFieldValue, Fields, [Field | SoFar], UpdatedFields).
 
 % make/2 make(Instance, ClassName).
-%
-make(Instance, ClassName) :-
-    make(Instance, ClassName, []).
+make(InstanceName, ClassName) :-
+    make(InstanceName, ClassName, []).
 
 % make/3 make(Instance, ClassName, NewValues).
 %
-make(InstanceName, _, _) :-
-    atom(InstanceName),
-    %% fail if instance already exist
-    instance(InstanceName, _, _),
-    !, fail.
-make(InstanceName, ClassName, NewValues) :-
-    atom(InstanceName),
-    !,
+make(InstanceName, ClassName, Values) :-
+    atom(InstanceName), !,
+    not(is_instance(InstanceName)),
     is_class(ClassName),
-    class(ClassName, _, Fields, _),
-    update_fields(Fields, NewValues, UpdatedFields),
-    assertz(instance(InstanceName, ClassName, UpdatedFields)).
-make(Instance, ClassName, NewValues) :-
-    var(Instance),
-    !,
+    instantiate_fields(ClassName, Fields),
+    update_fields(Values, Fields, UpdatedFields),
+    asserta(instance(InstanceName, ClassName, UpdatedFields)).
+make(Instance, ClassName, Values) :-
     is_class(ClassName),
-    class(ClassName, _, Fields, _),
-    update_fields(Fields, NewValues, UpdatedFields),
-    Instance = instance(sample, ClassName, UpdatedFields).
+    instantiate_fields(ClassName, Fields),
+    update_fields(Values, Fields, UpdatedFields),
+    Instance = instance(snow, ClassName, UpdatedFields).
+
