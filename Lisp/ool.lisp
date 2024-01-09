@@ -122,25 +122,25 @@
 ;;;; get-data: !
 (defun get-data (instance slot-name) 
   (cond 
-    ;; Caso base 
-    ((null instance) nil)
-    ;; Se Ã¨ un atom 
-    ((atom (car instance)) (get-data (caddr instance) slot-name))
-    ;; Se Ã¨ un metodo 
-    ((and (symbolp (caar instance)) 
-          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                 (intern (symbol-name slot-name) "KEYWORD")) 
-          (listp (cdar instance)) 
-          (member '=> (cdar instance))) 
-     (caddar instance))
-    ;; Se Ã¨ un attributo 
-    ((and (symbolp (caar instance)) 
-          (equal (intern (symbol-name (caar instance)) "KEYWORD") 
-                 (intern (symbol-name slot-name) "KEYWORD"))) 
-     ;; Se Ã¨ nil ma esistente 
-     (if (null (cdar instance)) "undefined" (cdar instance))) 
-    ;; Altrimenti 
-    (T (get-data (cdr instance) slot-name))))
+   ;; Caso base 
+   ((null instance) nil)
+   ;; Se è un atom 
+   ((atom (car instance)) (get-data (caddr instance) slot-name))
+   ;; Se è un metodo 
+   ((and (symbolp (caar instance)) 
+         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                (intern (symbol-name slot-name) "KEYWORD")) 
+         (listp (cdar instance)) 
+         (member '=> (cdar instance))) 
+    (caddar instance))
+   ;; Se è un attributo 
+   ((and (symbolp (caar instance)) 
+         (equal (intern (symbol-name (caar instance)) "KEYWORD") 
+                (intern (symbol-name slot-name) "KEYWORD"))) 
+    ;; Se è nil ma esistente 
+    (if (null (cdar instance)) "undefined" (cdar instance))) 
+   ;; Altrimenti 
+   (T (get-data (cdr instance) slot-name))))
 
 
 ;;;; get-parents
