@@ -254,9 +254,9 @@ declare_methods([Method | Rest], ClassName) :-
     Term =.. [Name, Instance | Args],
     rewrite_method(Body, RewritedBody, Instance),
     asserta((Term :-
-        is_instance(Instance, ClassName),
-        !,
-        RewritedBody)),
+		 is_instance(Instance, ClassName),
+		 !,
+		 RewritedBody)),
     declare_methods(Rest, ClassName).
 
 % def_class/3 def_class(Name, Parents, Parts).

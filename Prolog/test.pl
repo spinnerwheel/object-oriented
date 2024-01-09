@@ -11,10 +11,10 @@ clear :-
 clear_methods(BagOf) :-
     current_predicate(class/4),
     findall(Name, (class(_,_,_, Methods),
-		member(Method, Methods),
-		Method = method(Name, Args, _),
-		Term =.. [Name, _ | Args],
-		retractall(Term)), BagOf).
+		   member(Method, Methods),
+		   Method = method(Name, Args, _),
+		   Term =.. [Name, _ | Args],
+		   retractall(Term)), BagOf).
 
 % run/1 run(Test).
 % Run Test and print the result on the stdout.
@@ -53,7 +53,7 @@ test :-
 	def_class(l1, [], [field(name, "l1")]),
 	make(instance_l1, l1),
 	def_class(l2, [], [field(name, "l2"),
-			    field(l1, instance_l1, l1)]),
+			   field(l1, instance_l1, l1)]),
 	make(instance_l2, l2),
 	fieldx(instance_l2, [l1, name], "l1"),
 	not(fieldx(instance_l2, [], _)),
