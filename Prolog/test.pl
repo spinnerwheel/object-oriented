@@ -1,6 +1,6 @@
 %% -*- Mode: Prolog -*-
 
-:- ["rewrite-oop"].
+:- [oop].
 
 % clear/0
 % True if clears the environment
