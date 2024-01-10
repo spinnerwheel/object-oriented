@@ -46,16 +46,14 @@ TO-DO
   (cond ((null method) NIL) 
         (T (cons (car method) (get-method-names (cddr method))))))
 
-"""
-(defun stampa-oggetto (oggetto)
-  (print oggetto))
-"""
+
 (defun redefine-struc (parts)
  ; (stampa-oggetto parts)
   
   (apply #'append  (check-third-element (check-ty parts)) ))
 
 
+;;;; check-ty: se non Ã¨ presente il type nei field aggiunge T
 (defun check-ty (lista)
   (mapcar (lambda (sottolista)
             (if (or (null sottolista) (null (cddr sottolista)))
@@ -64,6 +62,7 @@ TO-DO
           (cdr lista)))
 
 
+;;;controlla se il terzo elemento appartiene ai tipi base
 (defun check-third-element (list)
   (mapcar (lambda (sottolista)
 	    (if (not(or (equal '(integer) (cddr sottolista))
@@ -72,28 +71,10 @@ TO-DO
 					;funziona solo su classi esistenti, T non passa
 			
 			))
-		(error "Il terzo elemento non è un tipo base di Lisp")
+		(error "Il terzo elemento non Ã¨ un tipo base di Lisp")
 		sottolista))
 	  list))
-"""
-( ;modificare con un if
-				
-			 (if (not (equal (third sottolista) '(T)))
-			     (is-class (third sottolista)))
-			 )
-"""
 
-
-"""
-(defun controlla-terzo-elemento-base (lista)
-  (mapcar (lambda (sublista)
-            (if (and (listp sublista)
-                     (eq (length sublista) 3)
-                     (symbolp (third sublista)))
-                sublista
-                (error ""Terzo elemento non è un tipo di base di Lisp"")))
-          lista))
-"""
 
 (defun slot-structure (slots) 
     (cond ((= (list-length slots) 0) nil) 
@@ -136,7 +117,7 @@ TO-DO
 
 
 ;;;; is-class !
-;;; ritorna T se class-name è il nome di una classe
+;;; ritorna T se class-name Ã¨ il nome di una classe
 (defun is-class (class-name) 
   (if (get-class-spec class-name) T (error "Class-name not found!")))
 
@@ -165,15 +146,15 @@ TO-DO
   (cond 
     ;; Caso base 
     ((null instance) nil)
-    ;; Se è un atom 
+    ;; Se Ã¨ un atom 
     ((atom (car instance)) (get-data (caddr instance) slot-name))
-    ;; Se è un metodo 
+    ;; Se Ã¨ un metodo 
     
-    ;; Se è un attributo 
+    ;; Se Ã¨ un attributo 
     ((and (symbolp (caar instance)) 
           (equal (intern (symbol-name (caar instance)) "KEYWORD") 
                  (intern (symbol-name slot-name) "KEYWORD"))) 
-     ;; Se è nil ma esistente 
+     ;; Se Ã¨ nil ma esistente 
      (if (null (cdar instance)) "undefined" (second (car instance)))) 
     ;; Altrimenti 
     (T (get-data (cdr instance) slot-name))))
@@ -213,9 +194,9 @@ TO-DO
 
 
 ;;; get-class-data: estrae il valore dello slot-name specificato dalla !
-;;; classe desiderata. Se slot-name non Ã¨ presente nella classe,
+;;; classe desiderata. Se slot-name non ÃƒÂ¨ presente nella classe,
 ;;; viene cercato nei parents della classe.
-;;; Se non Ã¨ presente lo slot-name nella classe o nei parents, la
+;;; Se non ÃƒÂ¨ presente lo slot-name nella classe o nei parents, la
 ;;; funzione segnala un errore.
 (defun get-class-data (class slot-name) 
   (cond ((get-data (get-class-spec class) slot-name)) 
@@ -228,7 +209,7 @@ TO-DO
 
 ;;; get-parent-slot: restituisce il valore del primo slot-name presente !
 ;;; nelle classi parents passate come lista. In pratica se uno slot-name
-;;; non Ã¨ presente in uno dei parents, va a cercarlo ed eventualmente
+;;; non ÃƒÂ¨ presente in uno dei parents, va a cercarlo ed eventualmente
 ;;; ereditarlo dalla prossima classe della lista parents.
 (defun get-parent-slot (parents slot-name) 
   (cond ((null parents) nil) 
@@ -243,12 +224,12 @@ TO-DO
   (cond ((and (equal (car value) 'OOLINST) 
               (equal class-name 'T)) T) 
         ((equal (cadr value) class-name) T) 
-        ;; Ereditarietà
+        ;; EreditarietÃ 
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
 
 
 ;;; <<: estrae il valore di un campo da una classe.
-;;; Se slot-name non è presente nella classe dell'istanza
+;;; Se slot-name non Ã¨ presente nella classe dell'istanza
 ;;; viene segnalato un errore.
 (defun << (instance slot-name) 
     ;; Se l'instanza non ha lo slotname, vedi la sua classe 
@@ -262,7 +243,7 @@ TO-DO
 
 
 ;;; <<*: estrae il valore da una classe percorrendo una catena di attributi.
-;;; Il risultato è il valore associato all'ultimo elemento di slot-name
+;;; Il risultato Ã¨ il valore associato all'ultimo elemento di slot-name
 ;;; nell'ultima istanza.
 ;;; Se uno degli elementi di slot-name non esiste nella classe
 ;;; dell'istanza, viene segnalato un errore.
@@ -270,7 +251,7 @@ TO-DO
   (cond 
     ((null (is-instance (<< instance (if (listp (car slot-name)) 
 					 (caar slot-name) (car slot-name))))) 
-     (error "Errore <<* non è un'istanza"))
+     (error "Errore <<* non Ã¨ un'istanza"))
     ((eq (length slot-name) 1) 
      (<< instance (if (listp (car slot-name)) 
                       (caar slot-name) (car slot-name))))
