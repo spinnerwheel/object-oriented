@@ -134,7 +134,8 @@ field(Instance, FieldName, Value) :-
     member(field(FieldName, Value, _), Fields).
 
 % fieldx/3 fieldx(Instance, Fields, Result).
-% True if Result is the value of the last element of Fields in the last instance.
+% True if Result is the value of the last
+% element of Fields in the last instance.
 % Is the same as:
 % ?- field(I1, s1, V1),
 % |   field(V1, s2, R),
@@ -217,7 +218,7 @@ superclass([Class | Queue], SuperClass, SoFar) :-
     superclass(NewQueue, SuperClass, NewSoFar).
 
 % rewrite_method/3 rewrite_method(Element, RewritedElement, Instance).
-% Contains the logic to substitute the atom this with Instance.
+% Contains the logic to substitute the atom this with the variable Instance.
 rewrite_method(Element, Instance, Instance) :-
     atom(Element),
     Element = this, !.
@@ -261,7 +262,7 @@ declare_methods([Method | Rest], ClassName) :-
 
 % def_class/3 def_class(Name, Parents, Parts).
 % True if Name is not already an atom rapresenting a class,
-% Parents are valid classes,
+% Parents is a list of valid classes (possibly empty),
 % Parts is a list (possibly empty) containing valid fields and methods.
 def_class(Name, Parents, Parts) :-
     atom(Name),
@@ -302,7 +303,7 @@ make(InstanceName, ClassName) :-
     make(InstanceName, ClassName, []).
 
 % make/3 make(Instance, ClassName, NewValues).
-%
+% Create an instance of ClassName.
 make(InstanceName, ClassName, Values) :-
     atom(InstanceName), !,
     not(is_instance(InstanceName)),
