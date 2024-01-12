@@ -1,14 +1,5 @@
 ;;;; -*- Mode: Lisp -*-
 
-"""
-
-TO-DO
-
-- controllo parent esistente
-- controllo type
-- metodi
- 
-"""
 
 ;;;; classes-specs !
 (defparameter *classes-specs* (make-hash-table))
@@ -29,32 +20,30 @@ TO-DO
 ;;;; def-class !
 ;;; definisce una classe come variabile globale
 (defun def-class (class-name parents &rest part)
-  (cond ((or (not (atom class-name)) 
+   (cond ((or (not (atom class-name)) 
              (equal class-name '()) 
              (null class-name) 
              (not (listp parents))
 	     (is-class class-name)
 	     ) 
-         (error (format nil "Error: Class-name or Parents invalid."))))
-  (add-class-spec class-name 
-		  (append (list class-name)
-			  (list parents)
-			  (list (append
-			   (slot-structure
-				  (redefine-struc (first part)))
-			   (slot-structure (second part)))))
-		  )
-  class-name)
-
-"""
+          (error (format nil "Error: Class-name invalid.")))
+	 ((not (check-parents parents))
+        (error (format nil "Error: Parents invalid."))))
 (add-class-spec class-name 
-        (append (list class-name) 
-        (append (list parents) (list (slot-structure slot)))))) 
-    """    
+		(append (list class-name)
+			(list parents)
+			(list (append
+			       (slot-structure
+				(redefine-struc (first part)))
+			       (slot-structure (second part)))))
+		)
+class-name)
 
 
-
-;;;; check-parents
+(defun check-parents (lista)
+  (if lista
+      (every #'is-class lista)
+      t))
 
 
 ;;;; get-method-names: ! 
@@ -130,6 +119,9 @@ TO-DO
 		 )
 	 )))
 
+
+
+
 (defun slot-structure-redefinition (slots)
   ;(stampa-oggetto "Slot-structure-reduce slots")
   ;(stampa-oggetto slots)
@@ -152,16 +144,10 @@ TO-DO
   ;(stampa-oggetto method-spec)
   (setf (fdefinition method-name) 
         (lambda (this &rest args) 
-          (apply (<< this method-name) (append (list this) args)))) 
+          (apply (field this method-name) (append (list this) args)))) 
   (eval (rewrite-method-code method-name method-spec)))
 
-"""
-(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((METHODS #<anonymous interpreted function 40300049AC>)))
 
-
-(STUDENT (PERSON) ((NAME . ""Eva Lu Ator"") (UNIVERSITY . ""Berkeley"") (TALK => #<anonymous interpreted function 4030002E24>)))
-
-"""
 
 ;;;; rewrite-method-code: !
 ;;; riscrive il metodo come una lambda
@@ -191,11 +177,9 @@ TO-DO
          (cons (car slots) 
                (cons (cadr slots) (check-method (cdr (cdr slots)))))) 
         (T (check-method (cdr slots)))))
-"""
-(and
-	  (listp (cadr slots))
-	  (member 'methods (cadr slots)))
-"""
+
+
+
 ;;;; is-class !
 ;;; ritorna T se class-name è il nome di una classe
 (defun is-class (class-name) 
@@ -244,34 +228,7 @@ TO-DO
 
 
 
-"""
 
-(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((TALK #<anonymous interpreted function 40F0012C7C>)))
-(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((METHODS #<anonymous interpreted function 40300049AC>)))
-
-
-(STUDENT (PERSON) ((NAME . ""Eva Lu Ator"") (UNIVERSITY . ""Berkeley"") (TALK => #<anonymous interpreted function 4030002E24>)))
-
-"""
-				        
-
-"""
-(def-class ’student ’(person) ’name ""Eva Lu Ator""’university ""Berkeley""
-	    ’talk ’(=> (&optional (out *standard-output*))
-		       (format out ""My name is ~A~%My age is ~D~%""
-			       (<< this ’name)
-			       (<< this ’age))))
-
-(def-class ’student ’(person)
-  ’(fields
-    (name ""Eva Lu Ator"")
-    (university ""Berkeley"" string))
-  ’(methods
-    (talk (&optional (out *standard-output*))
-	  (format out ""My name is ~A~%My age is ~D~%""
-		  (field this ’name)
-		  (field this ’age)))))
-"""
 ;;;; get-parents
 (defun get-parents (class) 
   (cond ((null (cadr (get-class-spec class))) nil) 
@@ -352,13 +309,13 @@ TO-DO
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
 
 
-;;; <<: estrae il valore di un campo da una classe.
+;;; field: estrae il valore di un campo da una classe.
 ;;; Se slot-name non è presente nella classe dell'istanza
 ;;; viene segnalato un errore.
-(defun << (instance slot-name)
-  ;(stampa-oggetto "<< instance")
+(defun field (instance slot-name)
+  ;(stampa-oggetto "field instance")
   ;(stampa-oggetto instance)
-  ;(stampa-oggetto "<< slot-name")
+  ;(stampa-oggetto "field slot-name")
   ;(stampa-oggetto slot-name)
     ;; Se l'instanza non ha lo slotname, vedi la sua classe 
         (cond ((get-data instance slot-name)) 
@@ -370,20 +327,20 @@ TO-DO
 			"Error: no method or slot named ~a found." slot-name)))))
 
 
-;;; <<*: estrae il valore da una classe percorrendo una catena di attributi.
+;;; field*: estrae il valore da una classe percorrendo una catena di attributi.
 ;;; Il risultato è il valore associato all'ultimo elemento di slot-name
 ;;; nell'ultima istanza.
 ;;; Se uno degli elementi di slot-name non esiste nella classe
 ;;; dell'istanza, viene segnalato un errore.
-(defun <<* (instance &rest slot-name)
+(defun field* (instance &rest slot-name)
   (cond 
-    ((null (is-instance (<< instance (if (listp (car slot-name)) 
+    ((null (is-instance (field instance (if (listp (car slot-name)) 
 					 (caar slot-name) (car slot-name))))) 
-     (error "Errore <<* non è un'istanza"))
+     (error "Errore field* non è un'istanza"))
     ((eq (length slot-name) 1) 
-     (<< instance (if (listp (car slot-name)) 
+     (field instance (if (listp (car slot-name)) 
                       (caar slot-name) (car slot-name))))
-    (T (<<* (<< instance (if (listp (car slot-name)) 
+    (T (field* (field instance (if (listp (car slot-name)) 
                              (caar slot-name) (car slot-name))) 
             (cdr slot-name)))))
 
