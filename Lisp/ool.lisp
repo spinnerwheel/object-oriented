@@ -39,11 +39,10 @@ TO-DO
   (add-class-spec class-name 
 		  (append (list class-name)
 			  (list parents)
-			
-		    
-			  (list (slot-structure
-				 (redefine-struc (first part))))
-				(slot-structure (second part)))
+			  (list (append
+			   (slot-structure
+				  (redefine-struc (first part)))
+			   (slot-structure (second part)))))
 		  )
   class-name)
 
@@ -118,8 +117,8 @@ TO-DO
 
 
 (defun slot-structure (slots)
-  (stampa-oggetto "Slot-structure slots")
-  (stampa-oggetto slots)
+  ;(stampa-oggetto "Slot-structure slots")
+  ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method slots))) 
          (cons (cons (car (car (cdr slots)))
@@ -132,8 +131,8 @@ TO-DO
 	 )))
 
 (defun slot-structure-redefinition (slots)
-  (stampa-oggetto "Slot-structure-reduce slots")
-  (stampa-oggetto slots)
+  ;(stampa-oggetto "Slot-structure-reduce slots")
+  ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method slots))) 
          (cons (cons (car slots) 
@@ -147,13 +146,13 @@ TO-DO
 ;;;; process-method: !
 ;;; genera il codice necessaria per creare un metodo.
 (defun process-method (method-name method-spec)
-  (stampa-oggetto "Proces-method method-name")
-  (stampa-oggetto method-name)
-  (stampa-oggetto "Proces-method method-spec")
-  (stampa-oggetto method-spec)
+  ;(stampa-oggetto "Proces-method method-name")
+  ;(stampa-oggetto method-name)
+  ;(stampa-oggetto "Proces-method method-spec")
+  ;(stampa-oggetto method-spec)
   (setf (fdefinition method-name) 
         (lambda (this &rest args) 
-          (apply (<<-methods this method-name) (append (list this) args)))) 
+          (apply (<< this method-name) (append (list this) args)))) 
   (eval (rewrite-method-code method-name method-spec)))
 
 """
@@ -167,11 +166,11 @@ TO-DO
 ;;;; rewrite-method-code: !
 ;;; riscrive il metodo come una lambda
 (defun rewrite-method-code (method-name method-spec)
-  (stampa-oggetto "Method-name")
-  (stampa-oggetto method-name)
-  (stampa-oggetto " ")
-  (stampa-oggetto "Method-spec")
-  (stampa-oggetto method-spec)
+  ;(stampa-oggetto "Method-name")
+  ;(stampa-oggetto method-name)
+  ;(stampa-oggetto " ")
+  ;(stampa-oggetto "Method-spec")
+  ;(stampa-oggetto method-spec)
   ;; Riscrive il metodo come una funzione lambda 
   (cons 'lambda
 	
@@ -182,8 +181,8 @@ TO-DO
 ;;; check-method: !
 ;;; estrae i metodi dai parts passati li restituisce in una cons.
 (defun check-method (slots) 
-  (stampa-oggetto "Check-ethod")
-  (stampa-oggetto slots)
+  ;(stampa-oggetto "Check-ethod")
+  ;(stampa-oggetto slots)
   ;;Estrae i metodi dagli slots 
   (cond ((null slots) nil) 
         ((and
@@ -218,10 +217,10 @@ TO-DO
 
 ;;;; get-data: !
 (defun get-data (instance slot-name)
-  (stampa-oggetto "Get-data Instance: ")
-  (stampa-oggetto instance)
-  (stampa-oggetto "Get-data Slot-name: ")
-  (stampa-oggetto slot-name)
+  ;(stampa-oggetto "Get-data Instance: ")
+  ;(stampa-oggetto instance)
+  ;(stampa-oggetto "Get-data Slot-name: ")
+  ;(stampa-oggetto slot-name)
   (cond 
     ;; Caso base 
     ((null instance) nil)
@@ -357,10 +356,10 @@ TO-DO
 ;;; Se slot-name non è presente nella classe dell'istanza
 ;;; viene segnalato un errore.
 (defun << (instance slot-name)
-  (stampa-oggetto "<< instance")
-  (stampa-oggetto instance)
-  (stampa-oggetto "<< slot-name")
-  (stampa-oggetto slot-name)
+  ;(stampa-oggetto "<< instance")
+  ;(stampa-oggetto instance)
+  ;(stampa-oggetto "<< slot-name")
+  ;(stampa-oggetto slot-name)
     ;; Se l'instanza non ha lo slotname, vedi la sua classe 
         (cond ((get-data instance slot-name)) 
             ;; Se la classe non ha lo slotname cerca nei padri 
