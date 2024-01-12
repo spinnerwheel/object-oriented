@@ -29,7 +29,6 @@ TO-DO
 ;;;; def-class !
 ;;; definisce una classe come variabile globale
 (defun def-class (class-name parents &rest part)
-  
   (cond ((or (not (atom class-name)) 
              (equal class-name '()) 
              (null class-name) 
@@ -38,15 +37,21 @@ TO-DO
 	     ) 
          (error (format nil "Error: Class-name or Parents invalid."))))
   (add-class-spec class-name 
-		  (append (list class-name) 
-			  (append
-			   (list parents)
-			   (list
-			    (slot-structure
-			     (redefine-struc (first part)))))
-			  (list (slot-structure (second part)))
-			  ))
+		  (append (list class-name)
+			  (list parents)
+			
+		    
+			  (list (slot-structure
+				 (redefine-struc (first part))))
+				(slot-structure (second part)))
+		  )
   class-name)
+
+"""
+(add-class-spec class-name 
+        (append (list class-name) 
+        (append (list parents) (list (slot-structure slot)))))) 
+    """    
 
 
 
@@ -117,7 +122,7 @@ TO-DO
   (stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method slots))) 
-         (cons (cons (car slots) 
+         (cons (cons (car (car (cdr slots)))
                      (list (process-method (car (car (cdr slots))) (cdr (car (cdr slots))))))
                (slot-structure (cdr (cdr slots))))
 	 ) 
@@ -148,9 +153,16 @@ TO-DO
   (stampa-oggetto method-spec)
   (setf (fdefinition method-name) 
         (lambda (this &rest args) 
-          (apply (<< this method-name) (append (list this) args)))) 
+          (apply (<<-methods this method-name) (append (list this) args)))) 
   (eval (rewrite-method-code method-name method-spec)))
 
+"""
+(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((METHODS #<anonymous interpreted function 40300049AC>)))
+
+
+(STUDENT (PERSON) ((NAME . ""Eva Lu Ator"") (UNIVERSITY . ""Berkeley"") (TALK => #<anonymous interpreted function 4030002E24>)))
+
+"""
 
 ;;;; rewrite-method-code: !
 ;;; riscrive il metodo come una lambda
@@ -161,9 +173,10 @@ TO-DO
   (stampa-oggetto "Method-spec")
   (stampa-oggetto method-spec)
   ;; Riscrive il metodo come una funzione lambda 
-  (cons 'lambda 
-        (cons (append (list 'this) (car (remove 'methods method-spec))) 
-              (cdr (remove 'methods method-spec)))))
+  (cons 'lambda
+	
+        (cons (append (list 'this) (car  method-spec)) 
+              (cdr  method-spec))))
 
 
 ;;; check-method: !
@@ -205,10 +218,10 @@ TO-DO
 
 ;;;; get-data: !
 (defun get-data (instance slot-name)
-  ;(stampa-oggetto "Instance: ")
-  ;(stampa-oggetto instance)
-  ;(stampa-oggetto "Slot-name: ")
-  ;(stampa-oggetto slot-name)
+  (stampa-oggetto "Get-data Instance: ")
+  (stampa-oggetto instance)
+  (stampa-oggetto "Get-data Slot-name: ")
+  (stampa-oggetto slot-name)
   (cond 
     ;; Caso base 
     ((null instance) nil)
@@ -230,8 +243,18 @@ TO-DO
     ;; Altrimenti 
     (T (get-data (cdr instance) slot-name))))
 
-					;(PERSON NIL ((NAME "EveAneglo" . T) (AGE 21 . INTEGER)))((NAM
-					;(STUDENT (PERSON) ((NAME "Eva Lu Ator" . T) (UNIVERSITY "Berkeley" . STRING)) METHODS (TALK (&OPTIONAL (OUT *STANDARD-OUTPUT*)) (FORMAT OUT "My name is ~A~%My age is ~D~%" (FIELD THIS #) (FIELD THIS #))))
+
+
+"""
+
+(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((TALK #<anonymous interpreted function 40F0012C7C>)))
+(STUDENT (PERSON) ((NAME ""Eva Lu Ator"" . T) (UNIVERSITY ""Berkeley"" . STRING)) ((METHODS #<anonymous interpreted function 40300049AC>)))
+
+
+(STUDENT (PERSON) ((NAME . ""Eva Lu Ator"") (UNIVERSITY . ""Berkeley"") (TALK => #<anonymous interpreted function 4030002E24>)))
+
+"""
+				        
 
 """
 (def-class ’student ’(person) ’name ""Eva Lu Ator""’university ""Berkeley""
@@ -334,6 +357,10 @@ TO-DO
 ;;; Se slot-name non è presente nella classe dell'istanza
 ;;; viene segnalato un errore.
 (defun << (instance slot-name)
+  (stampa-oggetto "<< instance")
+  (stampa-oggetto instance)
+  (stampa-oggetto "<< slot-name")
+  (stampa-oggetto slot-name)
     ;; Se l'instanza non ha lo slotname, vedi la sua classe 
         (cond ((get-data instance slot-name)) 
             ;; Se la classe non ha lo slotname cerca nei padri 
