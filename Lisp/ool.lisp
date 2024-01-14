@@ -35,7 +35,7 @@
 			  (list (append
 				 (slot-structure
 				  (redefine-struc (first part)))
-				 (slot-structure (second part))))))
+				 (slot-structure-methods  (add-methods-prefix (cdr (second part))))))))
   class-name)
 
 
@@ -45,18 +45,25 @@
       t))
 
 
+
+(defun add-methods-prefix (lista)
+  (mapcar (lambda (sottolista) (list 'methods sottolista)) lista))
+
+
 ;;;; get-method-names: ! 
 ;;; data una lista di metodi, restituisce un lista con i nomi dei metodi
 (defun get-method-names (method)
+  ;(stampa-oggetto "Get-methods-name method")
+  ;(stampa-oggetto method)
   (cond ((null method) NIL) 
-        (T (cons (car method) (get-method-names (cddr method))))))
+        (T (cons (car (car  method)) (get-method-names (cdr method))))))
 
 
 (defun redefine-struc (parts)
   (apply #'append (check-third-element (check-ty parts))))
 
 
-;;;; check-ty: se non è presente il type nei field aggiunge T
+;;;; check-ty: se non Ã¨ presente il type nei field aggiunge T
 (defun check-ty (lista)
   (mapcar (lambda (sottolista)
             (if (or (null sottolista) (null (cddr sottolista)))
@@ -93,6 +100,7 @@
 
 
 ;;;controlla se il terzo elemento appartiene ai tipi base
+
 (defun check-third-element (list)
   (mapcar (lambda (sottolista)
 	    (if (not (or (equal '(integer) (cddr sottolista))
@@ -100,23 +108,68 @@
 			(equal '(string) (cddr sottolista))
 			(equal '(real) (cddr sottolista))
 			(is-class (cddr sottolista))))
-		(error "Il terzo elemento non è un tipo base di Lisp")
+		(error "Il terzo elemento non Ã¨ un tipo base di Lisp")
 		sottolista))
 	  list))
+
 
 
 (defun slot-structure (slots)
   ;(stampa-oggetto "Slot-structure slots")
   ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
-        ((member (car slots) (get-method-names (check-method slots))) 
+        ((member (car slots) (get-method-names (check-method  slots)))
          (cons (cons (car (car (cdr slots)))
-                     (list (process-method (car (car (cdr slots))) (cdr (car (cdr slots))))))
-               (slot-structure (cdr (cdr slots))))) 
-        ((cons (cons (first slots) (cons (second slots) (third slots))) 
-		 (slot-structure (cdr (cdr (cdr slots)))))
+                     (list (process-method (car (cdr (car slots))) (cdr (cdr (car slots))))))
+               (slot-structure (cdr (cdr slots))))
+	 ) 
+        ( (cons  (cons (first slots) (cons (second slots) (third slots))) 
+		 (slot-structure (cdr (cdr (cdr slots))))
+		 )
 	 )))
 
+(defun slot-structure-methods (slots)
+  ;(stampa-oggetto "Slot-structure-methods slots")
+  ;(stampa-oggetto slots)
+  (cond ((= (list-length slots) 0) nil) 
+        ((member (car (car (cdr (car slots)))) (get-method-names (remove nil (check-method-new  slots))))
+         (cons (cons (car (car (cdr (car slots))))
+                     (list (process-method (car (car (cdr (car slots)))) (cdr (car (cdr (car slots)))))))
+               (slot-structure-methods (cdr slots)))
+	 ) 
+        ( (cons  (cons (first slots) (cons (second slots) (third slots))) 
+		 (slot-structure-methods (cdr (cdr (cdr slots))))
+		 )
+	 )))
+
+
+;;; check-method: !
+;;; estrae i metodi dai parts passati li restituisce in una cons.
+(defun check-method (slots) 
+  ;(stampa-oggetto "Check-ethod")
+  ;(stampa-oggetto slots)
+  ;;Estrae i metodi dagli slots 
+  (cond ((null slots) nil) 
+        ((and
+	  (listp (cadr slots))
+	  (member 'methods  slots))
+         (cons (car slots) 
+               (cons (cadr slots) (check-method (cdr (cdr slots)))))) 
+        (T (check-method (cdr slots)))))
+
+
+
+(defun check-method-new (slots) 
+  ;(stampa-oggetto "Check-ethod")
+  ;(stampa-oggetto slots)
+  ;;Estrae i metodi dagli slots 
+  (cond ((null slots) nil) 
+        ((and
+	  (listp (cadr slots))
+	  (member 'methods (car slots)))
+         (cons (car (cdr (car slots)))
+               (cons (cdr (cdr (car slots))) (check-method-new (cdr slots)))))
+        (T (check-method-new (cdr slots)))))
 
 
 
@@ -139,12 +192,18 @@
   ;(stampa-oggetto method-name)
   ;(stampa-oggetto "Proces-method method-spec")
   ;(stampa-oggetto method-spec)
+  (if 
+    (not (and (equal 'nil method-name)
+          (equal 'nil method-spec)))
+  
   (setf (fdefinition method-name) 
         (lambda (this &rest args) 
-          (apply (field this method-name) (append (list this) args)))) 
+          (apply (field this method-name) (append (list this) args))))) 
   (eval (rewrite-method-code method-name method-spec)))
 
 
+
+q
 
 ;;;; rewrite-method-code: !
 ;;; riscrive il metodo come una lambda
@@ -160,24 +219,11 @@
               (cdr  method-spec))))
 
 
-;;; check-method: !
-;;; estrae i metodi dai parts passati li restituisce in una cons.
-(defun check-method (slots) 
-  ;(stampa-oggetto "Check-ethod")
-  ;(stampa-oggetto slots)
-  ;;Estrae i metodi dagli slots 
-  (cond ((null slots) nil) 
-        ((and
-	  (listp (cadr slots))
-	  (member 'methods  slots))
-         (cons (car slots) 
-               (cons (cadr slots) (check-method (cdr (cdr slots)))))) 
-        (T (check-method (cdr slots)))))
 
 
 
 ;;;; is-class !
-;;; ritorna T se class-name è il nome di una classe
+;;; ritorna T se class-name Ã¨ il nome di una classe
 (defun is-class (class-name) 
   (if (get-class-spec class-name) T nil);(error ""Class-name not found!"))
   )
@@ -204,20 +250,20 @@
   (cond 
     ;; Caso base 
     ((null instance) nil)
-    ;; Se è un atom 
+    ;; Se Ã¨ un atom 
     ((atom (car instance)) (get-data (caddr instance) slot-name))
-    ;; Se è un metodo 
+    ;; Se Ã¨ un metodo 
     ((and (symbolp (caar instance)) 
           (equal (intern (symbol-name (caar instance)) "KEYWORD") 
                  (intern (symbol-name slot-name) "KEYWORD")) 
           (listp (cdar instance)) 
           (equal 'methods (first instance)))
      (caddar instance))
-    ;; Se è un attributo 
+    ;; Se Ã¨ un attributo 
     ((and (symbolp (caar instance)) 
           (equal (intern (symbol-name (caar instance)) "KEYWORD") 
                  (intern (symbol-name  slot-name) "KEYWORD"))) 
-     ;; Se è nil ma esistente 
+     ;; Se Ã¨ nil ma esistente 
      (if (null (cdar instance)) "undefined" (second (car instance)))) 
     ;; Altrimenti 
     (T (get-data (cdr instance) slot-name))))
@@ -261,10 +307,10 @@
 ;;; Se gli slots esistono viene restituita una cons contenente tutti gli
 ;;; slots validi, altrimenti la funzione segnala un errore
 (defun check-slot-exists (class slots)
-  (stampa-oggetto "Class in checkslot-exist")
-  (stampa-oggetto class)
-  (stampa-oggetto "Slots in checkslot-exist")
-  (stampa-oggetto slots)
+  ;(stampa-oggetto "Class in checkslot-exist")
+  ;(stampa-oggetto class)
+  ;(stampa-oggetto "Slots in checkslot-exist")
+  ;(stampa-oggetto slots)
   (cond ((null slots) nil) 
         ((get-class-data class (car slots)) 
          (cons (car slots) 
@@ -274,21 +320,21 @@
 
 
 (defun get-data-type (instance slot-name)
-  (stampa-oggetto "Get-data Instance: ")
-  (stampa-oggetto instance)
-  (stampa-oggetto "Get-data Slot-name: ")
-  (stampa-oggetto slot-name)
+  ;(stampa-oggetto "Get-data Instance: ")
+  ;(stampa-oggetto instance)
+  ;(stampa-oggetto "Get-data Slot-name: ")
+  ;(stampa-oggetto slot-name)
   (cond 
     ;; Caso base 
     ((null instance) nil)
-    ;; Se è un atom 
+    ;; Se Ã¨ un atom 
     ((atom (car instance)) (get-data-type (caddr instance) slot-name))
-    ;; Se è un metodo 
-    ;; Se è un attributo 
+    ;; Se Ã¨ un metodo 
+    ;; Se Ã¨ un attributo 
     ((and (symbolp (caar instance)) 
           (equal (intern (symbol-name (caar instance)) "KEYWORD") 
                  (intern (symbol-name  slot-name) "KEYWORD"))) 
-     ;; Se è nil ma esistente 
+     ;; Se Ã¨ nil ma esistente 
      (if (null (cdar instance)) "undefined" (cdr (cdr (car instance)))))
     ;; Altrimenti 
     (T (get-data-type (cdr instance) slot-name))))
@@ -299,9 +345,11 @@
 (defun get-class-type-slot (class slot-name)
   (subtypep-list-check
    (mapcar (lambda (element)
+	     
 	     (get-data-type
 	      (get-class-spec (first (second (get-class-spec class))))
-	      (first element)))
+	      (first element))
+	     )
 	   slot-name)
    (mapcar (lambda (x)
             (if (eq (second x) T)
@@ -310,32 +358,28 @@
           slot-name)
    )
   )
-"""
-(mapcar (lambda (sublist)
-            (let ((second-element (second sublist)))
-              (if (eq second-element T)
-                  (cons (car sublist) T)
-                  (cons (car sublist) (type-of second-element)))))
-          lst)
-"""
+
+
 
 ;;; far passar T come corretto
 
 (defun subtypep-list-check (original-t new-t)
-  (stampa-oggetto "Subtypep-list-check original-t: ")
-  (stampa-oggetto original-t)
-  (stampa-oggetto "Subtypep-list-check new-t: ")
-  (stampa-oggetto  new-t)
+  ;(stampa-oggetto "Subtypep-list-check original-t: ")
+  ;(stampa-oggetto original-t)
+  ;(stampa-oggetto "Subtypep-list-check new-t: ")
+  ;(stampa-oggetto  new-t)
   (if (equal (length original-t) (length new-t))
       (if (every #'subtypep (mapcar #'list new-t)(mapcar #'list original-t))
           t
           (error "invalid type"))
       (error "invalid type")))
 
+
+
 ;;; get-class-data: estrae il valore dello slot-name specificato dalla !
-;;; classe desiderata. Se slot-name non è presente nella classe,
+;;; classe desiderata. Se slot-name non Ã¨ presente nella classe,
 ;;; viene cercato nei parents della classe.
-;;; Se non è presente lo slot-name nella classe o nei parents, la
+;;; Se non Ã¨ presente lo slot-name nella classe o nei parents, la
 ;;; funzione segnala un errore.
 (defun get-class-data (class slot-name)
   (cond ((get-data (get-class-spec class) slot-name)) 
@@ -349,7 +393,7 @@
 
 ;;; get-parent-slot: restituisce il valore del primo slot-name presente !
 ;;; nelle classi parents passate come lista. In pratica se uno slot-name
-;;; non è¨ presente in uno dei parents, va a cercarlo ed eventualmente
+;;; non Ã¨Â¨ presente in uno dei parents, va a cercarlo ed eventualmente
 ;;; ereditarlo dalla prossima classe della lista parents.
 (defun get-parent-slot (parents slot-name) 
   (cond ((null parents) nil) 
@@ -365,13 +409,13 @@
   (cond ((and (equal (car value) 'OOLINST) 
               (equal class-name 'T)) T) 
         ((equal (cadr value) class-name) T) 
-        ;; Ereditarietà
+        ;; EreditarietÃ 
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
 
 
 
 ;;; field: estrae il valore di un campo da una classe.
-;;; Se slot-name non è presente nella classe dell'istanza
+;;; Se slot-name non Ã¨ presente nella classe dell'istanza
 ;;; viene segnalato un errore.
 (defun field (instance slot-name)
   ;(stampa-oggetto "field instance")
@@ -390,7 +434,7 @@
 
 
 ;;; field*: estrae il valore da una classe percorrendo una catena di attributi.
-;;; Il risultato è il valore associato all'ultimo elemento di slot-name
+;;; Il risultato Ã¨ il valore associato all'ultimo elemento di slot-name
 ;;; nell'ultima istanza.
 ;;; Se uno degli elementi di slot-name non esiste nella classe
 ;;; dell'istanza, viene segnalato un errore.
@@ -398,7 +442,7 @@
   (cond 
     ((null (is-instance (field instance (if (listp (car slot-name)) 
 					 (caar slot-name) (car slot-name))))) 
-     (error "Errore field* non è un'istanza"))
+     (error "Errore field* non Ã¨ un'istanza"))
     ((eq (length slot-name) 1) 
      (field instance (if (listp (car slot-name)) 
                       (caar slot-name) (car slot-name))))
