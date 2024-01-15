@@ -1,6 +1,8 @@
 ;;;; -*- Mode: Lisp -*-
 
 
+
+
 ;;;; classes-specs !
 (defparameter *classes-specs* (make-hash-table))
 
@@ -53,8 +55,6 @@
 ;;;; get-method-names: ! 
 ;;; data una lista di metodi, restituisce un lista con i nomi dei metodi
 (defun get-method-names (method)
-  ;(stampa-oggetto "Get-methods-name method")
-  ;(stampa-oggetto method)
   (cond ((null method) NIL) 
         (T (cons (car (car  method)) (get-method-names (cdr method))))))
 
@@ -89,8 +89,6 @@
 
 
 (defun check-ty-reload (lista)
-  ;(stampa-oggetto "Lista in check-ty")
-  ;(stampa-oggetto lista)
   (mapcar (lambda (sottolista)
             (if (or (null sottolista) (null (cddr sottolista)))
                 (append sottolista (list T))
@@ -100,7 +98,6 @@
 
 
 ;;;controlla se il terzo elemento appartiene ai tipi base
-
 (defun check-third-element (list)
   (mapcar (lambda (sottolista)
 	    (if (not (or (equal '(integer) (cddr sottolista))
@@ -115,8 +112,6 @@
 
 
 (defun slot-structure (slots)
-  ;(stampa-oggetto "Slot-structure slots")
-  ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method  slots)))
          (cons (cons (car (car (cdr slots)))
@@ -129,8 +124,6 @@
 	 )))
 
 (defun slot-structure-methods (slots)
-  ;(stampa-oggetto "Slot-structure-methods slots")
-  ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car (car (cdr (car slots)))) (get-method-names (remove nil (check-method-new  slots))))
          (cons (cons (car (car (cdr (car slots))))
@@ -146,9 +139,6 @@
 ;;; check-method: !
 ;;; estrae i metodi dai parts passati li restituisce in una cons.
 (defun check-method (slots) 
-  ;(stampa-oggetto "Check-ethod")
-  ;(stampa-oggetto slots)
-  ;;Estrae i metodi dagli slots 
   (cond ((null slots) nil) 
         ((and
 	  (listp (cadr slots))
@@ -160,9 +150,6 @@
 
 
 (defun check-method-new (slots) 
-  ;(stampa-oggetto "Check-ethod")
-  ;(stampa-oggetto slots)
-  ;;Estrae i metodi dagli slots 
   (cond ((null slots) nil) 
         ((and
 	  (listp (cadr slots))
@@ -174,8 +161,6 @@
 
 
 (defun slot-structure-redefinition (slots)
-  ;(stampa-oggetto "Slot-structure-reduce slots")
-  ;(stampa-oggetto slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method slots))) 
          (cons (cons (car slots) 
@@ -188,10 +173,6 @@
 ;;;; process-method: !
 ;;; genera il codice necessaria per creare un metodo.
 (defun process-method (method-name method-spec)
-  ;(stampa-oggetto "Proces-method method-name")
-  ;(stampa-oggetto method-name)
-  ;(stampa-oggetto "Proces-method method-spec")
-  ;(stampa-oggetto method-spec)
   (if 
     (not (and (equal 'nil method-name)
           (equal 'nil method-spec)))
@@ -199,21 +180,15 @@
   (setf (fdefinition method-name) 
         (lambda (this &rest args) 
           (apply (field this method-name) (append (list this) args))))) 
-  (eval (rewrite-method-code method-name method-spec)))
+  (eval (rewrite-method-code method-spec)))
 
 
 
-q
+
 
 ;;;; rewrite-method-code: !
 ;;; riscrive il metodo come una lambda
-(defun rewrite-method-code (method-name method-spec)
-  ;(stampa-oggetto "Method-name")
-  ;(stampa-oggetto method-name)
-  ;(stampa-oggetto " ")
-  ;(stampa-oggetto "Method-spec")
-  ;(stampa-oggetto method-spec)
-  ;; Riscrive il metodo come una funzione lambda 
+(defun rewrite-method-code (method-spec)
   (cons 'lambda
         (cons (append (list 'this) (car  method-spec)) 
               (cdr  method-spec))))
@@ -243,10 +218,6 @@ q
 
 ;;;; get-data: !
 (defun get-data (instance slot-name)
-  ;(stampa-oggetto "Get-data Instance: ")
-  ;(stampa-oggetto instance)
-  ;(stampa-oggetto "Get-data Slot-name: ")
-  ;(stampa-oggetto slot-name)
   (cond 
     ;; Caso base 
     ((null instance) nil)
@@ -290,8 +261,6 @@ q
 
 ;;; make: crea una nuova istanza di una classe. !
 (defun make (class-name &rest slot)
-					;(stampa-oggetto "Slots in make")
-					;(stampa-oggetto slot)
   ;; Non instanzio metodi non esistenti nella classe 
   (cond ((not (is-class class-name)))                            
         ((append (list 'oolinst) 
@@ -307,10 +276,6 @@ q
 ;;; Se gli slots esistono viene restituita una cons contenente tutti gli
 ;;; slots validi, altrimenti la funzione segnala un errore
 (defun check-slot-exists (class slots)
-  ;(stampa-oggetto "Class in checkslot-exist")
-  ;(stampa-oggetto class)
-  ;(stampa-oggetto "Slots in checkslot-exist")
-  ;(stampa-oggetto slots)
   (cond ((null slots) nil) 
         ((get-class-data class (car slots)) 
          (cons (car slots) 
@@ -320,10 +285,6 @@ q
 
 
 (defun get-data-type (instance slot-name)
-  ;(stampa-oggetto "Get-data Instance: ")
-  ;(stampa-oggetto instance)
-  ;(stampa-oggetto "Get-data Slot-name: ")
-  ;(stampa-oggetto slot-name)
   (cond 
     ;; Caso base 
     ((null instance) nil)
@@ -345,33 +306,37 @@ q
 (defun get-class-type-slot (class slot-name)
   (subtypep-list-check
    (mapcar (lambda (element)
-	     
-	     (get-data-type
-	      (get-class-spec (first (second (get-class-spec class))))
-	      (first element))
-	     )
+	     (cond ((equal nil (get-parents class))
+		    (get-data-type
+		     (get-class-spec  class)
+		     (first element)))
+		   (T (get-data-type
+		       (get-class-spec (first (second (get-class-spec class))))
+		       (first element)))
+		   ))
 	   slot-name)
    (mapcar (lambda (x)
-            (if (eq (second x) T)
-                T
-                (type-of (second x))))
-          slot-name)
+	     (if (eq (second x) T)
+		 T
+		 (type-of (second x))))
+	   slot-name)
    )
   )
 
 
-
-;;; far passar T come corretto
-
 (defun subtypep-list-check (original-t new-t)
-  ;(stampa-oggetto "Subtypep-list-check original-t: ")
-  ;(stampa-oggetto original-t)
-  ;(stampa-oggetto "Subtypep-list-check new-t: ")
-  ;(stampa-oggetto  new-t)
   (if (equal (length original-t) (length new-t))
-      (if (every #'subtypep (mapcar #'list new-t)(mapcar #'list original-t))
-          t
-          (error "invalid type"))
+      (if (member t original-t)
+          (every (lambda (orig-t new-t)
+                   (cond((equal orig-t t) T)
+					(T (subtypep new-t orig-t))))
+                 original-t
+                 new-t)
+          (if (every #'subtypep (mapcar #'list new-t) (mapcar #'list original-t))
+	      t
+	      (error "invalid type")
+	      ))
+      
       (error "invalid type")))
 
 
@@ -418,10 +383,6 @@ q
 ;;; Se slot-name non Ã¨ presente nella classe dell'istanza
 ;;; viene segnalato un errore.
 (defun field (instance slot-name)
-  ;(stampa-oggetto "field instance")
-  ;(stampa-oggetto instance)
-  ;(stampa-oggetto "field slot-name")
-  ;(stampa-oggetto slot-name)
     ;; Se l'instanza non ha lo slotname, vedi la sua classe 
         (cond ((get-data instance slot-name)) 
             ;; Se la classe non ha lo slotname cerca nei padri 
