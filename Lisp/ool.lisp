@@ -17,8 +17,31 @@
 
 (defun stampa-oggetto (oggetto)
   (print oggetto))
+"""
+(defun def-class (class-name parents &rest part)
+  (cond ((or (not (atom class-name)) 
+             (equal class-name '()) 
+             (null class-name) 
+             (not (listp parents))
+	     (is-class class-name)
+	     ) 
+         (error (format nil ""Error: Class-name invalid."")))
+	((not (check-parents parents))
+         (error (format nil ""Error: Parents invalid.""))))
+  (add-class-spec class-name 
+		  (append (list class-name)
+			  (list parents)
+			  (list (append
+				 (slot-structure
+				  (redefine-struc (first part)))
+				 (slot-structure-methods  (add-methods-prefix (cdr (second part))))))))
+  class-name)
 
 
+
+
+
+"""
 ;;;; def-class !
 ;;; definisce una classe come variabile globale
 (defun def-class (class-name parents &rest part)
@@ -34,10 +57,19 @@
   (add-class-spec class-name 
 		  (append (list class-name)
 			  (list parents)
-			  (list (append
-				 (slot-structure
-				  (redefine-struc (first part)))
-				 (slot-structure-methods  (add-methods-prefix (cdr (second part))))))))
+			  (cond ((equal (car (first part)) 'fields)
+				 (list (append
+					(slot-structure
+					 (redefine-struc (first part)))
+					(slot-structure-methods  (add-methods-prefix (cdr (second part))))))
+				 )
+				(T (list (append
+					  (slot-structure
+					   (redefine-struc  (second part)))
+					  (slot-structure-methods  (add-methods-prefix (cdr (first part)))))))
+				
+
+				)))
   class-name)
 
 
