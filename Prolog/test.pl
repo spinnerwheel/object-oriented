@@ -82,7 +82,11 @@ test(make_simple_cases) :-
     R1 = "student.talk",
     talk(s1, R1),
     R2 = "student_reverse.talk",
-    talk(sr1, R2).
+    talk(sr1, R2),
+    % redefine instance
+    make(p1, student),
+    make(s1, student_reverse),
+    make(sr1, object).
 
 test(make_override_fields) :-
     not(make(_, person, [name = 1])),
@@ -92,11 +96,6 @@ test(make_override_fields) :-
     field(P3, name, "override"),
     field(P3, age, 211), 
     not(make(_, person, [non_existing = 1])).
-
-test(make_fail_cases) :-
-    not(make(p1, student)),
-    make(o1, object),
-    not(talk(o1)).
 
 test(instance_as_field) :-
     def_class(c1, [], [field(id, "c1")]),
