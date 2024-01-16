@@ -77,22 +77,16 @@ is_parts([Part | Rest], Fields, [Part | Methods]) :-
 
 % is_instance/1 is_instance(Instance).
 % True if Instance is an instance.
-is_instance(InstanceName) :-
-    inst(InstanceName, _).
+is_instance(instance(Name, ClassName, Fields)) :-
+    atom(Name),
+    is_class(ClassName),
+    is_list(Fields).
 
 % is_instance/2 is_instance(Instance, ClassName).
 % True if Instance is an instance of ClassName as superclass.
-is_instance(InstanceName, ClassName) :-
-    atom(InstanceName),
-    instance(InstanceName, ClassName, _),
-    !.
-is_instance(InstanceName, SuperClass) :-
-    atom(InstanceName),
-    instance(InstanceName, ClassName, _),
-    superclass(ClassName, SuperClass).
-is_instance(instance(Name, ClassName, Fields), ClassName) :-
+is_instance(instance(Name, ClassName, Fields), SuperClassName) :-
     atom(Name),
-    is_class(ClassName),
+    superclass(ClassName, SuperClassName),
     is_list(Fields).
 
 % inst/2 inst(InstanceName, Instance).
@@ -131,7 +125,8 @@ append_if_not_member([Element | Rest], List, [Element | Result]) :-
 % Field is the field of name FieldName of Instance.
 field(Instance, FieldName, Value) :-
     fields(Instance, Fields),
-    member(field(FieldName, Value, _), Fields).
+    member(field(FieldName, Value, _), Fields),
+    !.
 
 % fieldx/3 fieldx(Instance, Fields, Result).
 % True if Result is the value of the last
@@ -155,13 +150,9 @@ parents(Class, Parents) :-
 % fields/2 fields(Class, Fields).
 % True if Element is a class and Fields are the direct fields of Element;
 % True if Element is an instance Fields are the fields of Instance.
-fields(Class, Fields) :-
-    class(Class, _, Fields, _),
-    !.
 fields(instance(_,_, Fields), Fields) :- !.
-fields(InstanceName, Fields) :-
-    inst(InstanceName, Instance),
-    fields(Instance, Fields).
+fields(Class, Fields) :-
+    class(Class, _, Fields, _).
 % anchestors/2 anchestors(Class, Anchestors).
 % True if Anchestors is the anchestors list of Class.
 anchestors(Class, Anchestors) :-
@@ -252,9 +243,10 @@ rewrite_method(Element, Element, _Instance).
 declare_methods([], _).
 declare_methods([Method | Rest], ClassName) :-
     Method = method(Name, Args, Body),
-    Term =.. [Name, Instance | Args],
+    Term =.. [Name, InstanceName | Args],
     rewrite_method(Body, RewritedBody, Instance),
     asserta((Term :-
+		inst(InstanceName, Instance),
 		 is_instance(Instance, ClassName),
 		 !,
 		 RewritedBody)),
@@ -306,7 +298,7 @@ make(InstanceName, ClassName) :-
 % Create an instance of ClassName.
 make(InstanceName, ClassName, Values) :-
     atom(InstanceName), !,
-    not(is_instance(InstanceName)),
+    not(inst(InstanceName, _)),
     is_class(ClassName),
     instantiate_fields(ClassName, Fields),
     update_fields(Values, Fields, UpdatedFields),
