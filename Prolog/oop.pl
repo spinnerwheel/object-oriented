@@ -297,6 +297,12 @@ make(InstanceName, ClassName) :-
 % make/3 make(Instance, ClassName, NewValues).
 % Create an instance of ClassName.
 make(InstanceName, ClassName, Values) :-
+    atom(InstanceName),
+    inst(InstanceName, Instance),
+    !,
+    retract(Instance),
+    make(InstanceName, ClassName, Values).
+make(InstanceName, ClassName, Values) :-
     atom(InstanceName), !,
     not(inst(InstanceName, _)),
     is_class(ClassName),
