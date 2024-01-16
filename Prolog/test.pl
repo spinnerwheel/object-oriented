@@ -1,6 +1,7 @@
 %% -*- Mode: Prolog -*-
 
 :- [oop].
+:- use_module(library(plunit)).
 
 % clear/0
 % True if clears the environment
@@ -16,104 +17,100 @@ clear_methods(BagOf) :-
 		   Term =.. [Name, _ | Args],
 		   retractall(Term)), BagOf).
 
-% run/1 run(Test).
-% Run Test and print the result on the stdout.
-run(Test) :-
-    call(Test),
-    !,
-    format("✅ ~w~n", Test).
-run(Test) :-
-    format("❌ ~w~n", Test).
+:- begin_tests(oop).
 
+test(def_class, [setup(clear)]) :-
+    def_class(person, [],
+	      [field(name, "person.name", string),
+	       field(age, 0, integer),
+	       method(talk, [Text],
+		      (write("Hi I'm "),
+		       field(this, name, Value),
+		       writeln(Value),
+		       write("I have "),
+		       field(this, age, Age),
+		       writeln(Age),
+		       write("I also want to say "),
+		       writeln(Text)))]),
+    def_class(object, [],
+	      [field(id, "object.id", string),
+	       method(to_string, [],
+		      (field(this, id, Value),
+		       write("Id: "),
+		       writeln(Value)))]),
+    def_class(record, [object],
+	      [field(id, -1, integer)]),
+    def_class(student, [person, record],
+	      [field(university, "student.university", string),
+	       method(talk, [],
+		      (writeln("student.talk"))),
+	       method(talk, [Result],
+		      (Result = "student.talk"))
+	      ]),
+    def_class(student_reverse, [object, person],
+	      [field(university, "student_reverse.university", string),
+	       method(talk, [],
+		      (writeln("student_reverse.talk"))),
+	       method(talk, [Result],
+		      (Result = "student_reverse.talk"))
+	      ]),
+    def_class(studentAge, [student],
+	      [field(age, "student_age.age", string),
+	       method(talk, [],
+		      (writeln("Hi I'm a studentAge!")))
+	      ]).
+test(redefine_class, [fail]) :-
+    def_class(person, [], []).
 
-test([]).
-test([Test | Rest]) :-
-    run(Test),
-    test(Rest).
+test(superclass) :-
+    superclass(student, person),
+    superclass(student, object),
+    superclass(student, record).
 
-test :-
-    Tests = [
-	clear,
-	% test superclass/is_instance
-	def_class(person, [], []),
-	def_class(record, [], []),
-	def_class(student, [person, record], []),
-	def_class(student_bicocca, [student], []),
-	make(s1, student_bicocca),
-	is_instance(s1, student),
-	is_instance(s1, person),
-	is_instance(s1, record),
-	not(superclass(person, student)),
-	not(superclass(student, student_bicocca)),
-	superclass(student_bicocca, student),
-	superclass(student_bicocca, person),
-	superclass(student_bicocca, record),
-	% test fieldx
-	clear,
-	def_class(l1, [], [field(name, "l1")]),
-	make(instance_l1, l1),
-	def_class(l2, [], [field(name, "l2"),
-			   field(l1, instance_l1, l1)]),
-	make(instance_l2, l2),
-	fieldx(instance_l2, [l1, name], "l1"),
-	not(fieldx(instance_l2, [], _)),
-	% test def_class
-	clear,
-        def_class(person, [],
-                  [field(name, "jon snow", string),
-                   field(age, 0, integer),
-                   method(talk, [Text],
-                          (write("Hi I'm "),
-                           field(this, name, Value),
-                           writeln(Value),
-			   write("I have "),
-                           field(this, age, Age),
-                           writeln(Age),
-                           write("I also want to say "),
-                           writeln(Text)))]),
-	def_class(object, [],
-		  [field(id, "", string),
-		   method(to_string, [],
-			  (field(this, id, Value),
-			   write("Id: "),
-			   writeln(Value)))]),
-	def_class(record, [object],
-		  [field(id, -1, integer)]),
-	def_class(student, [person, record],
-		  [field(university, "", string),
-		   method(talk, [],
-			  (writeln("Hi I'm a student!"))),
-		   method(talk, [_],
-			  (writeln("Print this out and we are chill")))
-		  ]),
-	def_class(student_reverse, [object, person],
-		  [field(university, "", string),
-		   method(talk, [],
-			  (writeln("Hi I'm a student!"))),
-		   method(talk, [_],
-			  (writeln("Print this out and we are chill")))
-		  ]),
-	% test override metodi e campi
-	def_class(studentAge, [student],
-		  [field(age, "0", string),
-		   method(talk, [],
-			  (writeln("Hi I'm a studentAge!")))
-		  ]),
-	% make tests
-	make(p1, person, [name = "p1", age = 22]),
-	not(make(p1, student, [])),
-	make(frank, student, [name = "Frank", age = 24, id = 24, university = "Bocconi"]),
-	make(s1, studentAge, [age = "22", id = -10000]),
-	not(make(s2, studentAge, [age = 10])),
-	make(sr1, student_reverse, [id = "100"]),
-	make(st1, student, [id = 2]),
-	field(p1, name, "p1"),
-	talk(p1, "I am a monkey"),
-	talk(frank),
-        talk(frank, "I'm also a monkey"),
-	talk(s1),
-	not(to_string(p1)),
-	to_string(frank),
-	to_string(s1)
-    ],
-    test(Tests).
+test(not_superclass) :-
+    not(superclass(person, student)),
+    not(superclass(object, student)),
+    not(superclass(record, student)).
+
+test(make_simple_cases) :-
+    make(p1, person),
+    inst(p1, I),
+    field(I, name, "person.name"),
+    talk(p1, ""),
+    make(s1, student),
+    make(sr1, student_reverse),
+    R1 = "student.talk",
+    talk(s1, R1),
+    R2 = "student_reverse.talk",
+    talk(sr1, R2).
+
+test(make_override_fields) :-
+    not(make(_, person, [name = 1])),
+    not(make(_, person, [name = name])),
+    make(p3, person, [age = 211, name = "override"]),
+    inst(p3, P3),
+    field(P3, name, "override"),
+    field(P3, age, 211), 
+    not(make(_, person, [non_existing = 1])).
+
+test(make_fail_cases) :-
+    not(make(p1, student)),
+    make(o1, object),
+    not(talk(o1)).
+
+test(instance_as_field) :-
+    def_class(c1, [], [field(id, "c1")]),
+    make(Ic1, c1),
+    def_class(c2, [c1], [field(id, "c2"),
+			 field(c1, Ic1, c1)]),
+    make(ic2, c2),
+    inst(ic2, I),
+    fieldx(I, [c1, id], "c1").
+
+test(field_that_must_fail) :-
+    not(field(ic2, name, "c2")),
+    not(def_class(c3, [], [field(c2, ic2, c2)])).
+
+:- end_tests(oop).
+
+:- run_tests.
