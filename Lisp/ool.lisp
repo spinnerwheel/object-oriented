@@ -7,7 +7,8 @@
 
 
 ;;;; add-class-spec !
-(defun add-class-spec (name class-spec) 
+(defun add-class-spec (name class-spec)
+ 
   (setf (gethash name *classes-specs*) class-spec))
 
 
@@ -29,25 +30,75 @@
          (error (format nil "Error: Class-name invalid.")))
 	((not (check-parents parents))
          (error (format nil "Error: Parents invalid."))))
-  (add-class-spec class-name 
-		  (append (list class-name)
-			  (list parents)
-			  (cond ((equal (car (first part)) 'fields)
-				 (list
-				  (append
-				   (slot-structure
-				    (redefine-struc (first part)))
-				   (slot-structure-methods
-				    (add-methods-prefix
-				     (cdr (second part)))))))
-				(T (list (append
-					  (slot-structure
-					   (redefine-struc  (second part)))
-					  (slot-structure-methods
-					   (add-methods-prefix
-					    (cdr (first part))))))))))
+  (if
+   
+    (check-coerence-type  part)
+      
+   (add-class-spec class-name 
+		   (append (list class-name)
+			   (list parents)
+			   
+			   (cond ((equal (car (first part)) 'fields)
+				  
+				  (list
+				   (append
+				    (slot-structure
+				     (redefine-struc (first part)))
+				    (slot-structure-methods
+				     (add-methods-prefix
+				      (cdr (second part))))))
+				  
+				  )
+				 (T (list (append
+					   (slot-structure
+					    (redefine-struc  (second part)))
+					   (slot-structure-methods
+					    (add-methods-prefix
+					     (cdr (first part))))))))
+			   )
+		   )
+   (error (format nil "Error: tipo incoerente."))
+   )
   class-name)
 
+
+
+
+
+(defun check-coerence-type (parts)
+  (print parts)
+  (if (equal (car (car parts)) 'fields)
+      (subtypep-list-check
+       (mapcar #'(lambda (sottolista)
+		   (if (= (length sottolista) 3)
+                       (nth 2 sottolista)
+                       'T))
+               (cdr (car parts)))
+       (mapcar #'(lambda
+		     (sublist)
+		   (if (= (length sublist) 3)
+		       (type-of (second sublist))
+		       'T))
+	       (cdr (car parts)))
+       
+       )
+      (subtypep-list-check
+       (mapcar #'(lambda (sottolista)
+		   (if (= (length sottolista) 3)
+                       (nth 2 sottolista)
+                       'T))
+               (cdr (cdr parts)))
+       (mapcar #'(lambda
+		     (sublist)
+		   (if (= (length sublist) 3)
+		       (type-of (second sublist))
+		       'T))
+	       (cdr (cdr parts)))
+       
+       )
+      
+      )
+  )
 
 ;;;; check-parents/1
 ;;; verifica che tutti i parent presenti nella lista parents esistano
@@ -110,6 +161,7 @@
 
 
 (defun slot-structure (slots)
+
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method  slots)))
          (cons (cons (car (car (cdr slots)))
@@ -118,7 +170,6 @@
                (slot-structure (cdr (cdr slots))))) 
         ((cons  (cons (first slots) (cons (second slots) (third slots))) 
 		(slot-structure (cdr (cdr (cdr slots))))))))
-
 
 
 (defun slot-structure-methods (slots)
@@ -131,7 +182,8 @@
 			    (cdr (car (cdr (car slots)))))))
                (slot-structure-methods (cdr slots)))) 
         ((cons  (cons (first slots) (cons (second slots) (third slots))) 
-		(slot-structure-methods (cdr (cdr (cdr slots))))))))
+		(slot-structure-methods (cdr (cdr (cdr slots))))))
+	))
 
 
 ;;; check-method: 
@@ -157,6 +209,7 @@
 		(cdr (cdr (car parts)))
 		(check-method-new (cdr parts)))))
         (T (check-method-new (cdr parts)))))
+
 
     
 
