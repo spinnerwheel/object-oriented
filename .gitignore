@@ -20,5 +20,6 @@
 *.wx32fsl
 *.ofasl
 *.64ofasl
+*.64ufasl
 *.lisp~
 *.lisp#
