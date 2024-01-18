@@ -81,19 +81,22 @@
 		       'T))
 	       (cdr (car parts)))
        
+       
+       
        )
       (subtypep-list-check
-       (mapcar #'(lambda (sottolista)
-		   (if (= (length sottolista) 3)
-                       (nth 2 sottolista)
-                       'T))
-               (cdr (cdr parts)))
+       
        (mapcar #'(lambda
 		     (sublist)
 		   (if (= (length sublist) 3)
 		       (type-of (second sublist))
 		       'T))
 	       (cdr (cdr parts)))
+       (mapcar #'(lambda (sottolista)
+		   (if (= (length sottolista) 3)
+                       (nth 2 sottolista)
+                       'T))
+               (cdr (cdr parts)))
        
        )
       
@@ -354,6 +357,11 @@
 
 (defun get-class-type-slot (class slot-name)
   (subtypep-list-check
+    (mapcar (lambda (x)
+	     (if (eq (second x) T)
+		 T
+		 (type-of (second x))))
+	   slot-name)
    (mapcar (lambda (element)
 	     (cond ((equal nil (get-parents class))
 		    (get-data-type
@@ -363,11 +371,8 @@
 		       (get-class-spec (first (second (get-class-spec class))))
 		       (first element)))))
 	   slot-name)
-   (mapcar (lambda (x)
-	     (if (eq (second x) T)
-		 T
-		 (type-of (second x))))
-	   slot-name)))
+  
+   ))
 
 
 
@@ -377,24 +382,21 @@
 ;;; mentre new-t contiene i type dei valori passati nella creazione
 ;;; dell'istanza. Se i valori sono uguali la funzione restituisce T,
 ;;; altrimenti invoca un errore
-(defun subtypep-list-check (original-t new-t)
-  (if (equal (length original-t) (length new-t))
-      (if (member t original-t)
-          (every (lambda (orig-t new-t)
-                   (cond((equal orig-t t) T)
-			(T (subtypep new-t orig-t))))
-                 original-t
-                 new-t)
-          (if (every #'subtypep (mapcar #'list new-t)
-		     (mapcar #'list original-t))
-	      t
-	      (error "invalid type")))      
-      (error "invalid type")))
-
+(defun subtypep-list-check (new-t original-t)
+  
+  (cond ((and
+	  (null original-t)
+	  (null new-t))
+	 T)
+	((subtypep (car new-t)(car original-t))
+	 (subtypep-list-check (cdr original-t)(cdr new-t)))
+	(t (error (format nil "New: ~A~%Original: ~A"
+		   (car new-t) (car original-t))))
+	))     
 
 
 ;;; get-class-data: estrae il valore dello slot-name specificato dalla !
-;;; classe desiderata. Se slot-name non Ã¨ presente nella classe,
+;;; classe desiderata. Se slot-name non è presente nella classe,
 ;;; viene cercato nei parents della classe.
 ;;; Se non è presente lo slot-name nella classe o nei parents, la
 ;;; funzione segnala un errore.
