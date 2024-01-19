@@ -38,9 +38,7 @@
    (add-class-spec class-name 
 		   (append (list class-name)
 			   (list parents)
-			   
 			   (cond ((equal (car (first part)) 'fields)
-				  
 				  (list
 				   (append
 				    (slot-structure
@@ -174,8 +172,6 @@
 
 
 (defun slot-structure (slots)
-  (print "slot-structure")
-  (print slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method  slots)))
          (cons (cons (car (car (cdr slots)))
@@ -416,7 +412,10 @@
 (defun subtypep-or-class(new original)
   (cond ((equal new 'T) T)
 	((superclass new original) t)
-	((subtypep new original) t)
+	((or
+	  (subtypep new original)
+	  (subtypep original new))
+	 t)
 	(T nil)))
 
 (defun superclass(class super-class)

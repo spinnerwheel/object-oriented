@@ -3,44 +3,44 @@
 University project to create a CommonLisp library to add 
 multiple inheritance object-oriented capapabilities to Prolog.
 
-## Predicates
+## Funzioni
 
-### `def_class/3`
+### `def-class/3`
 
-Syntax: `def_class(ClassName, Parents, Parts).`
+Syntax: `(def-class class-name parents parts)`
 
-Define and memorize the structure of the class in the knowledge base.
+Esempio:
 
-`ClassName` is an atom;
+> CL-USER 1 > (def-class ’veicolo nil ’(fields (colore "Rosso" string) (numero-posti 5 integer)))
+>
+> VEICOLO
 
-`Parents` is a list of classes (possibly empty);
-
-`Parts` is a list of fields and methods (possibly empty).
-
-The predicate `def_class/2` is created for convenience.
 
 ### `make/3`
 
-Syntax: `make(Instance, ClassName, )`
+Syntax: `(make class-name slot)`
 
-Create an instance of `ClassName`.
+Esempi:
 
-`ClassName` is an atom associated with a class.
+> CL-USER 1 > (defparameter macchina1 (make 'veicolo))
+>
+> MACCHINA1
 
-If `Instance` is an atom the instance is associated
-with `Instance` and added to the knowledge base;
+> CL-USER 2 > (defparameter macchina2 (make 'veicolo 'colore "blu" 'numero-posti 4))
+>
+> MACCHINA2
 
-If `Instance` is a free variable then it's unified
-with the rappresentaton of the instance;
-
-If `Instance` should be a term that unifies
-with the the rappresentaton of the instance.
 
 ### `is_class/1`
 
-Syntax: `is_class(ClassName)`
+Syntax: `(is-class class-name)`
 
-True if `ClassName` is an atom associated with a class.
+Esempio:
+
+>CL-USER 1 > (is-class 'veicolo)
+>
+>T
+
 
 ### `is_instance/2`
 
