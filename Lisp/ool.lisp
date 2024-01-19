@@ -19,7 +19,8 @@
 
 
 
-;;;; def-class !
+
+;;;; def-class
 ;;; definisce una classe come variabile globale
 (defun def-class (class-name parents &rest part)
   (cond ((or (not (atom class-name)) 
@@ -62,11 +63,20 @@
   class-name)
 
 
+(defun type-of-with-class (value)
+  (if (and
+       (listp value)
+       (equal (car value) 'make)
+       (is-instance (make (cadadr value))))
+      (cadadr value)
+					
+    (type-of value)
+    )
+  )
 
 
 
 (defun check-coerence-type (parts)
-  (print parts)
   (if (equal (car (car parts)) 'fields)
       (subtypep-list-check
        (mapcar #'(lambda (sottolista)
@@ -77,7 +87,7 @@
        (mapcar #'(lambda
 		     (sublist)
 		   (if (= (length sublist) 3)
-		       (type-of (second sublist))
+		       (type-of-with-class (second sublist))
 		       'T))
 	       (cdr (car parts)))
        
@@ -130,7 +140,7 @@
 ;;; a partire dalla lista parts ridefinisce la lista in una nuova lista
 ;;; per poi essere essere analizzata dalla funzione slot-strucure
 (defun redefine-struc (parts)
-  (apply #'append (check-third-element (check-type-validation parts))))
+  (apply #'append (check-type-validation parts)))
 
 
 
@@ -158,21 +168,29 @@
 			 (equal '(string) (cddr sottolista))
 			 (equal '(real) (cddr sottolista))
 			 (is-class (cddr sottolista))))
-		(error "Il terzo elemento non Ã¨ un tipo base di Lisp")
+		(error "Il terzo elemento non è un tipo base di Lisp")
 		sottolista))
 	  list))
 
 
 (defun slot-structure (slots)
-
+  (print "slot-structure")
+  (print slots)
   (cond ((= (list-length slots) 0) nil) 
         ((member (car slots) (get-method-names (check-method  slots)))
          (cons (cons (car (car (cdr slots)))
                      (list (process-method
 			    (car (cdr (car slots))) (cdr (cdr (car slots))))))
                (slot-structure (cdr (cdr slots))))) 
-        ((cons  (cons (first slots) (cons (second slots) (third slots))) 
+        ((cons  (cons (first slots) (cons (execute-make(second slots)) (third slots))) 
 		(slot-structure (cdr (cdr (cdr slots))))))))
+
+
+(defun execute-make(value)
+  (if (and (listp value) (equal (car value) 'make))
+      (make (cadadr value))
+    value
+    ))
 
 
 (defun slot-structure-methods (slots)
@@ -357,11 +375,7 @@
 
 (defun get-class-type-slot (class slot-name)
   (subtypep-list-check
-    (mapcar (lambda (x)
-	     (if (eq (second x) T)
-		 T
-		 (type-of (second x))))
-	   slot-name)
+
    (mapcar (lambda (element)
 	     (cond ((equal nil (get-parents class))
 		    (get-data-type
@@ -371,6 +385,12 @@
 		       (get-class-spec (first (second (get-class-spec class))))
 		       (first element)))))
 	   slot-name)
+    (mapcar (lambda (x)
+	     (if (eq (second x) T)
+		 T
+		 (type-of (second x))))
+	   slot-name)
+   
   
    ))
 
@@ -383,17 +403,31 @@
 ;;; dell'istanza. Se i valori sono uguali la funzione restituisce T,
 ;;; altrimenti invoca un errore
 (defun subtypep-list-check (new-t original-t)
-  
   (cond ((and
 	  (null original-t)
 	  (null new-t))
-	 T)
-	((subtypep (car new-t)(car original-t))
+	 T)	
+	((subtypep-or-class (car new-t)(car original-t))
 	 (subtypep-list-check (cdr original-t)(cdr new-t)))
 	(t (error (format nil "New: ~A~%Original: ~A"
-		   (car new-t) (car original-t))))
+			  (car new-t) (car original-t))))
 	))     
 
+(defun subtypep-or-class(new original)
+  (cond ((equal new 'T) T)
+	((superclass new original) t)
+	((subtypep new original) t)
+	(T nil)))
+
+(defun superclass(class super-class)
+  (cond
+   ;;; rivedere questa logica
+   ((and (equal class super-class)
+	 (equal (get-parents class) nil))
+    T)
+   ((member super-class (get-parents class)) t)
+   (T nil))
+  )
 
 ;;; get-class-data: estrae il valore dello slot-name specificato dalla !
 ;;; classe desiderata. Se slot-name non è presente nella classe,
@@ -425,10 +459,11 @@
 ;;; is-instance/2
 ;;; ritorna T se viene passato come oggetto l'istanza di una classe
 (defun is-instance (value &optional (class-name T)) 
-  (cond ((and (equal (car value) 'OOLINST) 
+  (cond ((not (listp value)) nil)
+	((and (equal (car value) 'OOLINST) 
               (equal class-name 'T)) T) 
         ((equal (cadr value) class-name) T) 
-        ;; EreditarietÃ 
+        ;; Ereditarietà
         ((member class-name (cadr (get-class-spec (cadr value)))) T)))
 
 
@@ -457,7 +492,7 @@
 	    (field instance (if (listp (car slot-name)) 
 				(caar slot-name)
 				(car slot-name))))) 
-     (error "Errore field* non Ã¨ un'istanza"))
+     (error "Errore field* non è un'istanza"))
     ((eq (length slot-name) 1) 
      (field instance (if (listp (car slot-name)) 
 			 (caar slot-name) (car slot-name))))
