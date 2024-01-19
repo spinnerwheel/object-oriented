@@ -1,38 +1,54 @@
-(load "ool.lisp")
-(defun run (test)
-  (if (eval test)
-      t
-    (eval test)))
-(format t "~A~%" 
-        (map 'list 'run
-                      (list
-                       '(def-class 'person nil '(fields (name "Eve") (age 21)))
-                       '(def-class 'student '(person)
-                          '(fields
-                            (name "Eva Lu Ator")
-                            (university "Bicocca" string))
-                          '(methods
-                            (talk (&optional (out *standard-output*))
-				  (format out "My name is ~A~%My age is ~D~%"
-					  (field this ’name)
-					  (field this ’age)))))
-                       '(equal (defparameter eve (make 'person)) 'eve)
-                       '(equal (defparameter adam (make 'person 'name "Adam")) 'adam)
-                       '(equal (defparameter age (make 'person 'age 69)) 'age)
-                       '(equal (defparameter s1 (make 'student 'name "Eduardo De Filippo" 'age 108)) 's1)
-                       '(equal (defparameter s2 (make 'student)) 's2)
-                       ;; should fail beacuse "42" is not an integer but it doesn't
-                       '(not (defparameter s3 (make 'student 'age "42")))
-                       '(equal (field age 'age) 69)
-                       '(equal (field eve 'age) 21)
-                       ;; make non sovrascrive i campi correttamente
-                       ;; age = 21
-                       '(equal (field s1 'age) 108)
-                       '(equal (field s2 'name) "Eva Lu Ator")
-                       '(equal (talk s1) T)
-                       '(equal (talk s2) T)
-                       )))
-(def-class 'c1 nil '(fields (name "c1.name")))
-(def-class 'c2 nil '(fields (name "c2.name")))
-(def-class 'c3 '(c1 c2) '(fields (name "c3.name")))
+(ql:quickload "fiveam")
+(load
+ "/home/harold/Documents/university/lp/object-oriented/lisp/Lisp/ool.lisp")
+(untrace)
 
+(5am:def-suite my-system)
+(5am:def-suite* def-class-tests :in my-system)
+
+(5am:test def-class-tests
+  (5am:is (def-class 'person nil '(fields (name "person.name") (age 21))))
+  (5am:is (def-class 'student '(person)
+             '(fields
+                (name "student.name")
+                (university "student.university" string))
+             '(methods
+                (talk ()
+                      (values (field this ’name)
+                              (field this ’age))))))
+  (5am:is (def-class 'object nil '(fields (name "object.name"))))
+  (5am:is (def-class 's-bicocca '(student)
+                     '(methods (talk () (values "s-bicocca.talk")))
+                     '(fields (university "s-bicocca.university"))))
+  (5am:is (equal (field 's-bicocca 'university) "s-bicocca.university"))
+  (5am:is (equal (field 'student 'name) "student.name"))
+  (5am:is (eql (length (fields 'person)) 2))
+  (5am:is (eql (length (fields 'student)) 2))
+  (5am:is (eql (length (fields 'object)) 1))
+  (5am:is (eql (length (fields 's-bicocca)) 1))
+  )
+
+(5am:test make-tests
+  (5am:is (equal (make 'person)
+                 '(oolinst person)))
+  (5am:is (equal (make 'person 'name "newname")
+                 '(oolinst person ((name "newname")))))
+  )
+
+(5am:test field-tests
+ (5am:is (equal (field (make 'person)
+                       'name) "person.name"))
+ (5am:is (equal (field (make 'person)
+                       'age) 21))
+ (5am:is (equal (field (make 'person 'name "stost" 'age 200)
+                       'name) "stost"))
+ (5am:is (equal (field (make 'person 'name "stost" 'age 200)
+                       'age) 200))
+ )
+
+(5am:test make-fail-cases
+ (5am:is-false (make 'person 'name 1))
+ (5am:is-false (def-class 'c1 '(fields (name "string" integer))))
+ )
+
+(5am:run! 'def-class-tests)
