@@ -1,7 +1,7 @@
 # OOL
 
 University project to create a CommonLisp library to add 
-multiple inheritance object-oriented capapabilities to Prolog.
+multiple inheritance object-oriented capapabilities to CommonLisp.
 
 ## Funzioni
 
@@ -9,7 +9,9 @@ multiple inheritance object-oriented capapabilities to Prolog.
 
 Syntax: `(def-class class-name parents parts)`
 
-Esempio:
+Defines a class as a global variable.
+
+Example:
 
 > CL-USER 1 > (def-class ’veicolo nil ’(fields (colore "Rosso" string) (numero-posti 5 integer)))
 >
@@ -20,97 +22,125 @@ Esempio:
 
 Syntax: `(make class-name slot)`
 
-Esempi:
+Creates a new instance of a class.
 
-> CL-USER 1 > (defparameter macchina1 (make 'veicolo))
+Examples:
+
+> CL-USER 1 > (make 'veicolo)
+>
+> (OOLINST VEICOLO NIL)
+
+> CL-USER 2 > (make 'veicolo 'colore "blu" 'numero-posti 4)
+>
+> (OOLINST VEICOLO ((COLORE "blu" . T) (NUMERO-POSTI 4 . T)))
+
+> CL-USER 3 > (defparameter macchina1 (make 'veicolo))
 >
 > MACCHINA1
 
-> CL-USER 2 > (defparameter macchina2 (make 'veicolo 'colore "blu" 'numero-posti 4))
+> CL-USER 4 > (defparameter macchina2 (make 'veicolo 'colore "Blu" 'numero-posti 4))
 >
 > MACCHINA2
 
 
-### `is_class/1`
+### `is-class/1`
 
 Syntax: `(is-class class-name)`
 
-Esempio:
+Returns T if class-name is a class.
 
->CL-USER 1 > (is-class 'veicolo)
+Example:
+
+> CL-USER 1 > (is-class 'veicolo)
 >
->T
+> T
 
 
-### `is_instance/2`
 
-Syntax: `is_instance(Value, ClassName)`
+### `is-instance/1`
+### `is-instance/2`
 
-If `ClassName` is an atom, true if `Value` is
-a instance with `ClassName` as superclass;
+Syntax: `(is-instance value)`
 
-If `ClassName` is a free variable, true if `Value` is a instance.
+Returns T if an instance of a class is passed as an object.
 
-### `inst/2`
+Syntax: `(is-instance value class-name)`
 
-Retrive the instance associated with the name.
+Examples:
 
-Syntax: `inst(InstanceName, Instance)`
+> CL-USER 1 > (is-instance macchina1)
+>
+> T
 
-True if `InstanceName` is an atom associated
-with `Instance` in the knowledge base.
+> CL-USER 2 > (is-instance macchina1 'veicolo)
+>
+> T
 
-### `field/3`
 
-Syntax: `field(Instance, FieldName, Value)`
+### `field/2`
 
-True if `Instance` is a valid instance,
-`FieldName` is a valid field of the instance
-and `Value` is the value of `FieldName`.
+Syntax: `(field value field-name)`
 
-### `fieldx/3`
+Extracts the value of a field from a class.
 
-Syntax: `fieldx(Instance, FieldNames, Result)`
+Examples:
 
-True if `Instance` is a valid instance,
-`FieldNames` is a non empty list of atoms,
-representing attributes in the various objects retrieved.
+> CL-USER 1 > (field macchina1 'colore) 
+>
+> "Rosso"
 
-This equivalence applies:
-```prolog
-?- field(I1, f1, V1),
-|   field(V1, f2, R),
-|   fieldx(I1, [f1, f2], R).
-```
+> CL-USER 2 > (field macchina2 'colore) 
+>
+> "Blu"
+
+### `field*/3`
+
+Syntax: `(field* instance <field-name>+)`
+
+Extracts the value from a class by traversing a chain of attributes. The result is the value associated with the last element of slot-name in the last instance.
+
+Example:
+
+> CL-USER 1 > (def-class ’person nil ’(fields (name "Eve") (age 21 integer)))
+>
+> PERSON
+
+> CL-USER 2 > (defparameter eve (make ’person))
+>
+> EVE
+
+> CL-USER 3 > (def-class ’student ’(person)
+    ’(fields
+    (name "Eva Lu Ator")
+    (university "Berkeley" string)
+    (friend "amico"))
+    ’(methods
+    (talk (&optional (out *standard-output*))
+    (format out "My name is ~A~%My age is ~D~%"
+    (field this ’name)
+    (field this ’age))))
+>
+> STUDENT
+
+> CL-USER 4 > (defparameter s1 (make ’student ’name "Eduardo De Filippo" ’age 108 'friend eve))
+>
+> S1
+
+> CL-USER 5 > (defparameter s2 (make ’student ’name "Gianluca" ’age 108 'friend s1))
+>
+> S2
+
+> CL-USER 6 > (field* s2 'friend 'friend)
+>
+> (OOLINST PERSON NIL)
 
 ## Assumptions
 
-- It's not possible to create multiple instances or classes
-with the same name;
+- It's not possible to create multiple classes with the same name;
 - It's not possible to rename existing instances or classes;
 - The fields are inherited in a using a breath-first approach;
 - The fields directly defined in the class take priority
 over the inherited ones;
-
-```prolog
-% Age defined as integer
-?- def_class(person, [],
-|   [field(name, "Jon", string),
-|    field(age, 0, integer)]).
-true.
-
-% Try to redefine person
-?- def_class(person, [], []).
-false.
-
-% Age defined as a string
-?- def_class(student, [person],
-|   [field(age, "0", string)]).
-true.
-
-?- make(s1, student, [age = "42"]).
-true.
-```
 
 
 ## Tests
