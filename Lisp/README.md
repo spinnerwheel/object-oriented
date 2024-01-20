@@ -1,5 +1,12 @@
 # OOL
 
+## Group members
+Rocca Tommaso 869171
+
+Nicoletta Davide 858101
+
+## Description
+
 University project to create a CommonLisp library to add 
 multiple inheritance object-oriented capapabilities to CommonLisp.
 
