@@ -10,11 +10,10 @@
 (defun class-spec (name)
   (gethash name *classes-specs*))
 
-
+;; TODO could be rewrited to use 'type-error
 (defun param-error (param should-be instead-is)
-  (error
-   (format nil "~A should be ~A, not ~A."
-           param should-be instead-is)))
+  (error "~A should be ~A, not ~A."
+         param should-be instead-is))
 
 (defun field-value (field)
   "Return the value of given field."
@@ -27,31 +26,39 @@
 ;; PERF could be much improved implementing it like %anchestors
 (defun subclassp (class superclass)
   "True if CLASS is a subclass of SUPERCLASS"
-  (if (member superclass (anchestors class))
+  (if (or (equal class superclass)
+          (member superclass (anchestors class)))
       T
     NIL))
 
 
-(defun subtypep-with-class (type1 type2)
-  "True if TYPE1 is a valid subtype or subclass of TYPE2"
-  (cond ((subtypep type1 type2) T)
-        ((subclassp type1 type2) T)
-        (T NIL)))
-
 ;; valid-value-for-type
-;; TODO add instance-class case
 (defun valid-value-for-type (value type)
   "Verify value is a valid subtype of type"
-  (subtypep-with-class (type-of value) type))
+  (print value)
+  (print type)
+  (if (and (listp value)
+           (equal (first value)
+                  'OOLINST))
+      (subclassp (second value) type)
+  (subtypep (type-of value) type)))
 
+;; FIXME duplicate code, could be improved
 (defun field2-p (field)
-  (and (atom (car field))
-       (append field '(t))))
+  "True if field is a field with NAME and VALUE."
+  (cond ((not (atom (car field)))
+         (param-error 'field-name 'atom (type-of (car field))))
+        (T (append field '(t)))))
 
 (defun field3-p (field)
-  (and (atom (car field))
-       (valid-value-for-type (field-value field) (field-type field))
-       field))
+  "True if field is a field with NAME, VALUE and TYPE."
+  (cond ((not (atom (car field)))
+         (param-error 'field-name 'atom (type-of (car field))))
+        ((valid-value-for-type (field-value field) (field-type field))
+         field)
+        (T (error "Invalid value ~w for type ~w~%"
+                   (field-value field)
+                   (field-type field)))))
 
 (defun field-p (field)
   (if (eql (length field) 2)
@@ -142,12 +149,15 @@
             (inherited-fields class)))
    :key #'car))
 
+(defun %entire-field (object field-name)
+  (assoc field-name (fields object)))
+
 ;; field
 ;; Given a class and a field-name returns it's value (if exist)
 ;; TODO add instance case
-(defun field (class field-name)
+(defun field (object field-name)
   (field-value 
-   (assoc field-name (fields class))))
+   (assoc field-name (fields object))))
 
 ;; def-class
 (defun def-class (name parents &rest parts)
@@ -156,7 +166,7 @@
              (null name))
          (param-error 'name 'atom (type-of name)))
         ((is-class name)
-         (error(format nil "Class of name ~A has already been defined." name)))
+         (error "Class of name ~A has already been defined." name))
         ((not (listp parents))
          (param-error 'parents 'list (type-of parents)))
         ((not (listp parts))
@@ -170,10 +180,46 @@
          name)
         (t (error "def-class: something unexpected happend."))))
 
+(defun redefine-field (name new-value type class)
+  (cond ((not (field class name))
+         (error "~w is not a valid field name for ~A."
+          name class))
+        ((not (valid-value-for-type new-value type))
+         (error
+           "~w is not a valid value for field ~A of class ~A, should be ~A."
+           new-value name class type))
+        (T (list (list name new-value type)))))
+
+
+(defun process-arguments (arguments class sofar)
+  (if (null arguments)
+      sofar
+      (process-arguments
+        (nthcdr 2 arguments)
+        class
+        (append sofar
+                (redefine-field (first arguments)
+                                (second arguments)
+                                (field-type
+                                  (%entire-field class (first arguments)))
+                                class)))))
+
+
 ;; make
+(defun make (class &rest arguments)
+  (cond ((not (is-class class))
+         (param-error 'class 'CLASS (type-of class)))
+        (t (append (list 'OOLINST class)
+                   (process-arguments arguments class nil)))))
 
 ;; is-instance
 
-;; field
-
 ;; field*
+
+(def-class 'person nil '(fields (name "person.name" string) (age 21)))
+(def-class 
+  'student 
+  '(person)
+  '(fields (friend '(oolinst person ((name "frank"))) person)))
+(process-arguments '(name "s" age 21) 'person nil)
+(make 'person 'name 20)

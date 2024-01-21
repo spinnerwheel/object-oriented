@@ -18,8 +18,9 @@
                               (field this ’age))))))
   (5am:is (def-class 'object nil '(fields (name "object.name"))))
   (5am:is (def-class 's-bicocca '(student)
-                     '(methods (talk () (values "s-bicocca.talk")))
-                     '(fields (university "s-bicocca.university"))))
+                     '(methods (talk () "s-bicocca.talk"))
+                     '(fields
+                       (university "s-bicocca.university"))))
   (5am:is (equal (field 's-bicocca 'university) "s-bicocca.university"))
   (5am:is (equal (field 'student 'name) "student.name"))
   (5am:is (eql (length (fields 'person)) 2))
@@ -32,7 +33,7 @@
   (5am:is (equal (make 'person)
                  '(oolinst person)))
   (5am:is (equal (make 'person 'name "newname")
-                 '(oolinst person ((name "newname")))))
+                 '(oolinst person ((name "newname" T)))))
   )
 
 (5am:test field-tests
@@ -46,9 +47,12 @@
                        'age) 200))
  )
 
-(5am:test make-fail-cases
- (5am:is-false (make 'person 'name 1))
- (5am:is-false (def-class 'c1 '(fields (name "string" integer))))
- )
+(5am:test def-class-fail-cases
+  (5am:signals error (def-class 'c1 nil '(fields (name "string" integer))))
+  )
 
-(5am:run! 'def-class-tests)
+(5am:test make-fail-cases
+  (5am:signals error (make 'person 'name 1))
+  )
+
+(5am:run! '(def-class-tests def-class-fail-cases))
