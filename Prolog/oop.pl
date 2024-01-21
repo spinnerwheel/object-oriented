@@ -1,9 +1,14 @@
 % -*- Mode: Prolog -*-
 
+%%%% Nicoletta Davide 858101
+%%%% Rocca Tommaso 869171
+
 :- dynamic instance/3.
 :- dynamic class/4.
 
-% is_type/2
+% is_type/2 is_type(Value, Type).
+% True if Value is of type Type;
+% If Value is an instance, Type must be a superclass of Value's class
 is_type(undefined, _Value) :- !.
 is_type(Type, Value) :-
     is_of_type(Type, Value), !.
@@ -78,16 +83,23 @@ is_parts([Part | Rest], Fields, [Part | Methods]) :-
 % is_instance/1 is_instance(Instance).
 % True if Instance is an instance.
 is_instance(instance(Name, ClassName, Fields)) :-
+    !,
     atom(Name),
     is_class(ClassName),
     is_list(Fields).
-
+is_instance(InstanceName) :-
+    inst(InstanceName, Instance),
+    is_instance(Instance).
 % is_instance/2 is_instance(Instance, ClassName).
 % True if Instance is an instance of ClassName as superclass.
 is_instance(instance(Name, ClassName, Fields), SuperClassName) :-
     atom(Name),
     superclass(ClassName, SuperClassName),
     is_list(Fields).
+is_instance(InstanceName, SuperClass) :-
+    atom(InstanceName),
+    instance(InstanceName, ClassName, _),
+    superclass(ClassName, SuperClass).
 
 % inst/2 inst(InstanceName, Instance).
 % True if Instance is the instance of name InstanceName
@@ -151,6 +163,10 @@ parents(Class, Parents) :-
 % True if Element is a class and Fields are the direct fields of Element;
 % True if Element is an instance Fields are the fields of Instance.
 fields(instance(_,_, Fields), Fields) :- !.
+fields(InstanceName, Fields) :-
+    inst(InstanceName, Instance),
+    !,
+    fields(Instance, Fields).
 fields(Class, Fields) :-
     class(Class, _, Fields, _).
 % anchestors/2 anchestors(Class, Anchestors).
@@ -243,10 +259,9 @@ rewrite_method(Element, Element, _Instance).
 declare_methods([], _).
 declare_methods([Method | Rest], ClassName) :-
     Method = method(Name, Args, Body),
-    Term =.. [Name, InstanceName | Args],
+    Term =.. [Name, Instance | Args],
     rewrite_method(Body, RewritedBody, Instance),
     asserta((Term :-
-		inst(InstanceName, Instance),
 		 is_instance(Instance, ClassName),
 		 !,
 		 RewritedBody)),
