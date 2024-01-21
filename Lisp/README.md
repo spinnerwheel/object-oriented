@@ -24,6 +24,10 @@ Example:
 >
 > VEICOLO
 
+> CL-USER 2 > (def-class 'garage nil '(fields (veicolo (make 'veicolo) veicolo)))
+>
+> GARAGE
+
 
 ### `make/3`
 
@@ -112,20 +116,11 @@ Example:
 >
 > PERSON
 
-> CL-USER 2 > (defparameter eve (make ’person))
+> CL-USER 2 > (defparameter eve (make ’person 'name "Eve Jhonson"))
 >
 > EVE
 
-> CL-USER 3 > (def-class ’student ’(person)
-    ’(fields
-    (name "Eva Lu Ator")
-    (university "Berkeley" string)
-    (friend "amico"))
-    ’(methods
-    (talk (&optional (out *standard-output*))
-    (format out "My name is ~A~%My age is ~D~%"
-    (field this ’name)
-    (field this ’age))))
+> CL-USER 3 > (def-class ’student ’(person) ’(fields (name "Eva Lu Ator") (university "Berkeley" string) (friend (make 'person) person)) ’(methods (talk (&optional (out standard-output)) (format out "My name is ~A~%My age is ~D~%" (field this ’name) (field this ’age)))))
 >
 > STUDENT
 
@@ -139,7 +134,7 @@ Example:
 
 > CL-USER 6 > (field* s2 'friend 'friend)
 >
-> (OOLINST PERSON NIL)
+> (OOLINST PERSON ((NAME "Eve Jhonson" . T)))
 
 ## Assumptions
 
@@ -148,13 +143,3 @@ Example:
 - The fields are inherited in a using a breath-first approach;
 - The fields directly defined in the class take priority
 over the inherited ones;
-
-
-## Tests
-
-We run some tests to verify the correctness of our implementation 
-
-```prolog
-% codice del test
-...
-```

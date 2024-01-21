@@ -22,7 +22,7 @@
 ;;;; def-class/3
 ;;; defines a class as a global variable
 (defun def-class (class-name parents &rest part)
-; necessary checks to verify the correctness of the parameters
+  ;; necessary checks to verify the correctness of the parameters
   (cond ((or (not (atom class-name)) 
              (equal class-name '()) 
              (null class-name) 
@@ -31,12 +31,14 @@
          (error (format nil "Error: Class-name invalid.")))
 	((not (check-parents parents))
          (error (format nil "Error: Parents invalid."))))
-  ;check to verify that the field values ​​are consistent with the assigned type
+  ;; check to verify that the field values ​​
+  ;; are consistent with the assigned type
   (if (check-coerence-type part)
      (add-class-spec class-name 
 		     (append (list class-name)
 			     (list parents)
-; checks if there are fields or methods in the first part of the parts list
+			     ;; checks if there are fields or methods in the
+			     ;; first part of the parts list
 			     (if (equal (car (first part)) 'fields)
 				 (execute-first-field part)  
 				 (execute-first-method part))))
@@ -149,29 +151,29 @@
 
 ;;;; check-type-validation/1
 ;;; if the type is not present in the fields, add T
-(defun check-type-validation (lista)
-  (if (equal (car lista) 'fields)
-      (mapcar (lambda (sottolista)
-            (if (or (null sottolista) (null (cddr sottolista)))
-                (append sottolista (list T))
-                sottolista))
-          (cdr lista))
-          (mapcar (lambda (sottolista)
-            (if (or (null sottolista) (null (cddr sottolista)))
-                (append sottolista (list T))
-                sottolista))
-          lista)))
+(defun check-type-validation (parts)
+  (if (equal (car parts) 'fields)
+      (mapcar (lambda (subparts)
+            (if (or (null subparts) (null (cddr subparts)))
+                (append subparts (list T))
+                subparts))
+          (cdr parts))
+          (mapcar (lambda (subparts)
+            (if (or (null subparts) (null (cddr subparts)))
+                (append subparts (list T))
+                subparts))
+          parts)))
 
 ;;;; slot-structure/1
 ;;; returns as a return value a list with the values ​​passed
 ;;; into the slots list following
 ;;; the OOLINST structure (specific function for fields)
-(defun slot-structure (slots)
-  (cond ((= (list-length slots) 0) nil)
-        ((cons (cons (first slots)
+(defun slot-structure (parts)
+  (cond ((= (list-length parts) 0) nil)
+        ((cons (cons (first parts)
 		     (cons
-		      (execute-make (second slots)) (third slots))) 
-	       (slot-structure (cdddr slots))))))
+		      (execute-make (second parts)) (third parts))) 
+	       (slot-structure (cdddr parts))))))
 
 
 ;;;; execute-make/1
@@ -186,15 +188,15 @@
 ;;; returns as a return value a list with the values ​​passed
 ;;; into the slots list following
 ;;; the OOLINST structure (specific function for methods)
-(defun slot-structure-methods (slots)
-  (cond ((= (list-length slots) 0) nil) 
-        ((member (caadar  slots)
-		 (get-method-names (remove nil (check-method slots))))
-         (cons (cons (caadar  slots)
+(defun slot-structure-methods (parts)
+  (cond ((= (list-length parts) 0) nil) 
+        ((member (caadar  parts)
+		 (get-method-names (remove nil (check-method parts))))
+         (cons (cons (caadar  parts)
                      (list (process-method
-			    (caadar slots)
-			    (cdadar slots))))
-               (slot-structure-methods (cdr slots))))))
+			    (caadar parts)
+			    (cdadar parts))))
+               (slot-structure-methods (cdr parts))))))
 
 
 
@@ -218,12 +220,12 @@
 ;;; takes as input the method name and body
 ;;; and generates the code needed to create a method.
 (defun process-method (method-name method-spec)
-  (if 
-   (not (and (equal 'nil method-name)
-             (equal 'nil method-spec)))
-   (setf (fdefinition method-name) 
-         (lambda (this &rest args) 
-           (apply (field this method-name) (append (list this) args))))) 
+  (if (not (and (equal 'nil method-name)
+		(equal 'nil method-spec)))
+      (setf (fdefinition method-name) 
+            (lambda (this &rest args) 
+              (apply (field this method-name)
+		     (append (list this) args))))) 
   (eval (rewrite-method-code method-spec)))
 
 
@@ -249,25 +251,19 @@
 ;;; extracts the value of the part-name
 ;;; from the instance passed as parameters.
 (defun get-data (instance part-name)
-  (cond 
-    ;; Caso base 
+  (cond  
     ((null instance) nil)
-    ;; Se è un atom 
     ((atom (car instance)) (get-data (caddr instance) part-name))
-    ;; Se è un metodo 
     ((and (symbolp (caar instance)) 
           (equal (symbol-name (caar instance))
                  (symbol-name part-name)) 
           (listp (cdar instance)) 
           (equal 'methods (first instance)))
      (caddar instance))
-    ;; Se è un attributo 
     ((and (symbolp (caar instance)) 
           (equal (symbol-name (caar instance)) 
                  (symbol-name  part-name))) 
-     ;; Se è nil ma esistente 
      (second (car instance))) 
-    ;; Altrimenti 
     (T (get-data (cdr instance) part-name))))
 
 
@@ -289,32 +285,31 @@
 ;;;; sublist/1
 ;;; given a list of n elements returns a list of sublists by matching
 ;;; the elements two by two
-(defun sublist (lista)
-  (if (<= (length lista) 1)
-      lista
-      (cons (list (first lista) (second lista))
-            (sublist (nthcdr 2 lista)))))
+(defun sublist (list-elements)
+  (if (<= (length list-elements) 1)
+      list-elements
+      (cons (list (first list-elements) (second list-elements))
+            (sublist (nthcdr 2 list-elements)))))
 
 
 
 ;;;; make/2
 ;;; crea una nuova istanza di una classe
-(defun make (class-name &rest slot)
-  ;checking the existence of the class
+(defun make (class-name &rest parts)
+  ;;checking the existence of the class
   (cond ((not (is-class class-name)))                            
-        ((append (list 'oolinst) 
-                 (list class-name
-		       (if (get-class-type-slot
-			    class-name
-			    (slot-structure
-			     (redefine-struc (sublist slot))))
-			   (slot-structure
-                            (redefine-struc
-			     (sublist
-			      (check-slot-exists class-name slot)))))
-		       )))))
-
-
+        ((append
+	  (list 'oolinst) 
+          (list class-name
+		(if (get-class-type-slot
+		     class-name
+		     (slot-structure
+		      (redefine-struc (sublist parts))))
+		    (slot-structure
+                     (redefine-struc
+		      (sublist
+		       (check-slot-exists class-name parts)))))
+		)))))
 
 
 ;;;; check-slot-exists/2
@@ -322,12 +317,12 @@
 ;;; as arguments are present in the specified class.
 ;;; If the slots exist, a cons. is returned
 ;;; containing all valid slots
-(defun check-slot-exists (class slots)
-  (cond ((null slots) nil) 
-        ((get-class-data class (car slots)) 
-         (cons (car slots) 
-               (cons (cadr slots) (check-slot-exists class (cddr slots)))))
-        (T (check-slot-exists class (cddr slots)))))
+(defun check-slot-exists (class parts)
+  (cond ((null parts) nil) 
+        ((get-class-data class (car parts)) 
+         (cons (car parts) 
+               (cons (cadr parts) (check-slot-exists class (cddr parts)))))
+        (T (check-slot-exists class (cddr parts)))))
 
 
 
@@ -358,8 +353,7 @@
 		 (get-data-type
 		  (get-class-spec
 		   (first (second (get-class-spec class))))
-		  (first element)))
-	     )
+		  (first element))))
 	   field-name)
    (mapcar (lambda (element)
 	     (if (eq (second element) T)
@@ -402,12 +396,11 @@
 ;;; checks that super-class is a parents of class
 (defun superclass(class super-class)
   (cond
-   ;;; rivedere questa logica
-   ((and (equal class super-class)
-	 (equal (get-parents class) nil))
-    T)
-   ((member super-class (get-parents class)) t)
-   (T nil)))
+    ((and (equal class super-class)
+	  (equal (get-parents class) nil))
+     T)
+    ((member super-class (get-parents class)) t)
+    (T nil)))
 
 
 
@@ -454,9 +447,9 @@
 ;;;; field/2
 ;;; extracts the value of a field from a class.
 (defun field (instance slot-name)
-  ; If the instance has no slotname, check its class 
+  ;; If the instance has no slotname, check its class 
   (cond ((get-data instance slot-name)) 
-        ; If the class does not have the slotname it searches the parents
+        ;; If the class does not have the slotname it searches the parents
         ((get-data (get-class-spec (cadr instance)) slot-name))
         ((get-parent-slot (get-parents (cadr instance)) slot-name))
         ((error 
@@ -472,14 +465,14 @@
 (defun field* (instance &rest slot-name)
   (cond 
     ((null (is-instance (field instance (if (listp (car slot-name)) 
-					 (caar slot-name) (car slot-name))))) 
+					    (caar slot-name) (car slot-name))))) 
      (error "Error, it's not a instance"))
     ((eq (length slot-name) 1) 
      (field instance (if (listp (car slot-name)) 
-                      (caar slot-name) (car slot-name))))
+			 (caar slot-name) (car slot-name))))
     (T (field* (field instance (if (listp (car slot-name)) 
-                             (caar slot-name) (car slot-name))) 
-            (cdr slot-name)))))
+				   (caar slot-name) (car slot-name))) 
+               (cdr slot-name)))))
 
 
 ;;; end of file -- ool.lisp
